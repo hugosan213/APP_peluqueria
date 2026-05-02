@@ -35,62 +35,78 @@ class Database:
 
     def registrar_reserva(self, id_cliente, id_empleado, id_servicio, fecha_usuario):
         try:
-            # 1. TRADUCCIÓN: Convertimos lo que vos escribís a algo que MySQL entienda
-            # Esperamos: "17/03/2026 16:00"
-            fecha_dt = datetime.strptime(fecha_usuario, '%d/%m/%Y %H:%M')
-            
-            # 2. FORMATO BD: Lo pasamos a "2026-03-17 16:00:00"
-            fecha_para_mysql = fecha_dt.strftime('%Y-%m-%d %H:%M:%S')
+            # (Mantener la lógica de conversión de fecha que ya tenemos)
+            formatos = ['%d/%m/%Y %H:%M:%S', '%d/%m/%Y %H:%M', '%d/%m/%Y']
+            fecha_dt = next((datetime.strptime(fecha_usuario, f) for f in formatos if True), None)
+            # ... (Validaciones de fecha)
+            fecha_mysql = fecha_dt.strftime('%Y-%m-%d %H:%M:%S')
 
             conexion = self.conectar()
             if conexion:
-                cursor = conexion.cursor()
-                sql = """INSERT INTO reserva (cliente_idcliente, empleado_idempleado, 
-                         servicio_idservicio, fecha_inicio, estado) 
-                         VALUES (%s, %s, %s, %s, 'pendiente')"""
+                cursor = conexion.cursor(dictionary=True)
                 
-                # Usamos la fecha ya convertida
-                valores = (id_cliente, id_empleado, id_servicio, fecha_para_mysql)
+                # VALIDACIÓN: Buscar si el empleado ya tiene un turno en esa fecha/hora
+                sql_check = "SELECT idreserva FROM reserva WHERE empleado_idempleado = %s AND fecha_inicio = %s"
+                cursor.execute(sql_check, (id_empleado, fecha_mysql))
                 
-                cursor.execute(sql, valores)
+                if cursor.fetchone():
+                    print("¡Error! El peluquero ya tiene un turno a esa hora.")
+                    return False # Aquí podrías lanzar una alerta en la UI más adelante
+                
+                # Si está libre, insertamos
+                sql_ins = """INSERT INTO reserva (cliente_idcliente, empleado_idempleado, 
+                             servicio_idservicio, fecha_inicio, estado) 
+                             VALUES (%s, %s, %s, %s, 'pendiente')"""
+                cursor.execute(sql_ins, (id_cliente, id_empleado, id_servicio, fecha_mysql))
                 conexion.commit()
-                cursor.close()
-                conexion.close()
                 return True
         except Exception as e:
-            # Si el usuario escribe mal el formato (ej: pone letras), salta acá
-            print(f"Error de formato o BD: {e}")
+            print(f"Error: {e}")
             return False
 
-    def obtener_o_crear_cliente(self, nombre_cliente):
+    def obtener_o_crear_cliente(self, nombre, apellido, email):
         conexion = self.conectar()
         if conexion:
             cursor = conexion.cursor(dictionary=True)
             try:
-                # 1. Buscamos si ya existe una persona con ese nombre
-                cursor.execute("SELECT c.idcliente FROM cliente c JOIN persona p ON c.persona_idpersona = p.idpersona WHERE p.nombre = %s", (nombre_cliente,))
+                # Buscamos por email (el cliente no necesita dar su DNI)
+                cursor.execute("""SELECT c.idcliente FROM cliente c 
+                                  JOIN persona p ON c.persona_idpersona = p.idpersona 
+                                  WHERE p.email = %s""", (email,))
                 resultado = cursor.fetchone()
+                if resultado: return resultado['idcliente']
                 
-                if resultado:
-                    return resultado['idcliente']
-                
-                # 2. Si no existe, creamos la persona primero
-                cursor.execute("INSERT INTO persona (nombre) VALUES (%s)", (nombre_cliente,))
-                id_persona = cursor.lastrowid
-                
-                # 3. Luego lo creamos como cliente
-                cursor.execute("INSERT INTO cliente (persona_idpersona) VALUES (%s)", (id_persona,))
-                id_nuevo_cliente = cursor.lastrowid
-                
+                # Si es nuevo, creamos la persona (sin campo DNI)
+                cursor.execute("INSERT INTO persona (nombre, apellido, email) VALUES (%s, %s, %s)", 
+                               (nombre, apellido, email))
+                id_p = cursor.lastrowid
+                cursor.execute("INSERT INTO cliente (persona_idpersona) VALUES (%s)", (id_p,))
                 conexion.commit()
-                return id_nuevo_cliente
-            except Error as e:
-                print(f"Error al gestionar cliente: {e}")
-                return None
+                return cursor.lastrowid
+            except Exception as e:
+                print(f"Error cliente: {e}")
             finally:
-                cursor.close()
-                conexion.close()
+                cursor.close(); conexion.close()
         return None
+
+    def agregar_empleado(self, nombre, apellido, email, dni):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor()
+            try:
+                # Insertamos a la persona con su DNI
+                sql = "INSERT INTO persona (nombre, apellido, email, dni) VALUES (%s, %s, %s, %s)"
+                cursor.execute(sql, (nombre, apellido, email, dni))
+                id_p = cursor.lastrowid
+                
+                cursor.execute("INSERT INTO empleado (persona_idpersona) VALUES (%s)", (id_p,))
+                conexion.commit()
+                return True
+            except Exception as e:
+                print(f"Error empleado: {e}")
+            finally:
+                cursor.close(); conexion.close()
+        return False
 
     def obtener_empleados(self):
         conexion = self.conectar()
@@ -113,3 +129,23 @@ class Database:
             conexion.close()
             return res
         return []
+
+    def agregar_empleado(self, nombre, apellido, email):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor()
+            try:
+                # 1. Crear persona con datos completos
+                cursor.execute("INSERT INTO persona (nombre, apellido, email) VALUES (%s, %s, %s)", 
+                               (nombre, apellido, email))
+                id_p = cursor.lastrowid
+                # 2. Crear el registro en la tabla empleado
+                cursor.execute("INSERT INTO empleado (persona_idpersona) VALUES (%s)", (id_p,))
+                conexion.commit()
+                return True
+            except Exception as e:
+                print(f"Error empleado: {e}")
+            finally:
+                cursor.close()
+                conexion.close()
+        return False

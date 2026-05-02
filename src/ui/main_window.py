@@ -1,123 +1,151 @@
 import customtkinter as ctk
 from database.connection import Database
+from datetime import datetime
 
 class MainWindow(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # Configuración de la ventana
-        self.title("Peluquería - Gestión de Turnos")
-        self.geometry("800x500")
-        ctk.set_appearance_mode("System") 
-        ctk.set_default_color_theme("blue")
+        self.title("Peluquería - Gestión Integral")
+        self.geometry("1000x750")
+        
+        # --- CONFIGURACIÓN BASE CALIDA ---
+        ctk.set_appearance_mode("Light") 
+        self.configure(fg_color="#FAF9F6") # Blanco Crema Neutro
 
-        # Título principal
-        self.label_titulo = ctk.CTkLabel(self, text="Agenda de Hoy", font=("Roboto", 24, "bold"))
+        # Estilo de las pestañas (Tabview) armonizado
+        self.tabview = ctk.CTkTabview(self, 
+                                      segmented_button_fg_color="#EADDCA", # Crema profundo
+                                      segmented_button_selected_color="#5C4033", # Marrón café
+                                      segmented_button_selected_hover_color="#3E2C23",
+                                      text_color="black")
+        self.tabview.pack(pady=10, padx=10, fill="both", expand=True)
+
+        self.tab_agenda = self.tabview.add("Agenda de Hoy")
+        self.tab_gestion = self.tabview.add("Configuración y Personal")
+
+        # --- PESTAÑA 1: AGENDA ---
+        
+        # Sidebar interna
+        self.sidebar_agenda = ctk.CTkFrame(self.tab_agenda, width=220, corner_radius=0, fg_color="#F2F0EB")
+        self.sidebar_agenda.pack(side="left", fill="y")
+
+        self.label_menu = ctk.CTkLabel(self.sidebar_agenda, text="ACCIONES", font=("Inter", 14, "bold"), text_color="#5C4033")
+        self.label_menu.pack(pady=(30, 20), padx=10)
+
+        self.btn_nuevo = ctk.CTkButton(self.sidebar_agenda, text="➕ Nueva Reserva", 
+                                       fg_color="#6B8E23", hover_color="#556B2F", text_color="white", # Verde Oliva
+                                       font=("Inter", 13, "bold"), height=40,
+                                       command=self.abrir_formulario)
+        self.btn_nuevo.pack(pady=10, padx=20, fill="x")
+
+        self.btn_actualizar = ctk.CTkButton(self.sidebar_agenda, text="🔄 Actualizar", 
+                                            fg_color="#A67B5B", hover_color="#8B5E3C", text_color="white", # Marrón suave
+                                            font=("Inter", 13, "bold"), height=40,
+                                            command=self.cargar_datos)
+        self.btn_actualizar.pack(pady=10, padx=20, fill="x")
+
+        self.linea_divisoria = ctk.CTkFrame(self.tab_agenda, width=1, fg_color="#E5E1DA")
+        self.linea_divisoria.pack(side="left", fill="y")
+
+        self.right_container = ctk.CTkFrame(self.tab_agenda, fg_color="#FAF9F6", corner_radius=0)
+        self.right_container.pack(side="right", fill="both", expand=True)
+
+        self.label_titulo = ctk.CTkLabel(self.right_container, text="Próximos Turnos", font=("Inter", 24, "bold"), text_color="#2D2424")
         self.label_titulo.pack(pady=20)
 
-        # Contenedor para los turnos
-        self.frame_agenda = ctk.CTkFrame(self)
+        self.frame_agenda = ctk.CTkScrollableFrame(self.right_container, fg_color="transparent")
         self.frame_agenda.pack(pady=10, padx=20, fill="both", expand=True)
 
-        # Botón para actualizar datos
-        self.btn_actualizar = ctk.CTkButton(self, text="Actualizar Agenda", command=self.cargar_datos)
-        self.btn_actualizar.pack(pady=20)
-
-        # Botón para abrir formulario de nuevo turno
-        self.btn_nuevo = ctk.CTkButton(self, text="Nueva Reserva +", 
-                                       fg_color="green", hover_color="darkgreen",
-                                       command=self.abrir_formulario)
-        self.btn_nuevo.pack(pady=10)
-
-        # Cargar datos al iniciar
+        # --- PESTAÑA 2: GESTIÓN (REDISEÑADA) ---
+        self.setup_tab_gestion()
         self.cargar_datos()
 
-    def cargar_datos(self):
-        for widget in self.frame_agenda.winfo_children():
-            widget.destroy()
+    def setup_tab_gestion(self):
+        # Contenedor centrado para la gestión
+        self.gestion_container = ctk.CTkFrame(self.tab_gestion, fg_color="#F2F0EB", corner_radius=15, border_width=1, border_color="#E5E1DA")
+        self.gestion_container.pack(pady=50, padx=50, expand=True)
 
+        ctk.CTkLabel(self.gestion_container, text="REGISTRAR NUEVO EMPLEADO", font=("Inter", 20, "bold"), text_color="#5C4033").pack(pady=(30, 20), padx=40)
+        
+        # Entradas con bordes que acompañan la paleta
+        self.ent_emp_nom = ctk.CTkEntry(self.gestion_container, placeholder_text="Nombre", width=400, height=45, border_color="#D5D0C5")
+        self.ent_emp_nom.pack(pady=10, padx=40)
+        self.ent_emp_ape = ctk.CTkEntry(self.gestion_container, placeholder_text="Apellido", width=400, height=45, border_color="#D5D0C5")
+        self.ent_emp_ape.pack(pady=10, padx=40)
+        self.ent_emp_dni = ctk.CTkEntry(self.gestion_container, placeholder_text="DNI del Empleado (sin puntos)", width=400, height=45, border_color="#D5D0C5")
+        self.ent_emp_dni.pack(pady=10, padx=40)
+        self.ent_emp_mail = ctk.CTkEntry(self.gestion_container, placeholder_text="Email", width=400, height=45, border_color="#D5D0C5")
+        self.ent_emp_mail.pack(pady=10, padx=40)
+
+        # Botón de registro con el color de la marca
+        self.btn_add_emp = ctk.CTkButton(self.gestion_container, text="Registrar Peluquero/a", 
+                                         fg_color="#5C4033", hover_color="#3E2C23", width=250, height=50, font=("Inter", 14, "bold"),
+                                         command=self.guardar_empleado)
+        self.btn_add_emp.pack(pady=40)
+
+    def guardar_empleado(self):
+        db = Database()
+        nom, ape, dni, mail = self.ent_emp_nom.get(), self.ent_emp_ape.get(), self.ent_emp_dni.get(), self.ent_emp_mail.get()
+        if nom and ape and dni and mail:
+            if db.agregar_empleado(nom, ape, mail, dni):
+                for e in [self.ent_emp_nom, self.ent_emp_ape, self.ent_emp_dni, self.ent_emp_mail]: e.delete(0, 'end')
+
+    def cargar_datos(self):
+        for widget in self.frame_agenda.winfo_children(): widget.destroy()
         db = Database()
         turnos = db.obtener_agenda()
 
         if not turnos:
-            label_error = ctk.CTkLabel(self.frame_agenda, text="No hay turnos registrados.")
-            label_error.pack(pady=10)
+            ctk.CTkLabel(self.frame_agenda, text="No hay turnos registrados.", font=("Inter", 16), text_color="#A69F92").pack(pady=50)
         else:
-            header = ctk.CTkLabel(self.frame_agenda, text="FECHA | CLIENTE | SERVICIO | PELUQUERO", font=("Roboto", 12, "bold"))
-            header.pack(pady=5)
-
-            # En la función cargar_datos de main_window.py
             for t in turnos:
-                # Usamos Fecha_Hora que es la que tiene el formato DD/MM HH:MM
-                texto = f"{t['Fecha_Hora']} - {t['Cliente']} - {t['Servicio']} - {t['Peluquero']}"
-                lbl = ctk.CTkLabel(self.frame_agenda, text=texto)
-                lbl.pack(pady=2)
+                card = ctk.CTkFrame(self.frame_agenda, corner_radius=12, border_width=1, border_color="#E5E1DA", fg_color="#FFFFFF")
+                card.pack(fill="x", pady=6, padx=10)
+                
+                info_izq = f"🕒 {t['Fecha_Hora']}  |  👤 {t['Cliente']}"
+                ctk.CTkLabel(card, text=info_izq, font=("Inter", 14, "bold"), text_color="#2D2424").pack(side="left", padx=20, pady=15)
+                
+                info_der = f"✂️ {t['Servicio']}  |  💈 {t['Peluquero']}"
+                ctk.CTkLabel(card, text=info_der, font=("Inter", 13), text_color="#5C4033").pack(side="right", padx=20, pady=15)
 
     def abrir_formulario(self):
-        ventana_registro = ctk.CTkToplevel(self)
-        ventana_registro.title("Registrar Nuevo Turno")
-        ventana_registro.geometry("500x600")
-        ventana_registro.attributes("-topmost", True)
+        ventana = ctk.CTkToplevel(self)
+        ventana.title("Nueva Reserva")
+        ventana.geometry("500x780")
+        ventana.configure(fg_color="#FAF9F6")
+        ventana.attributes("-topmost", True)
 
-        from datetime import datetime
         db = Database()
-        
-        # Cargamos datos para los combos
-        lista_empleados = db.obtener_empleados()
-        lista_servicios = db.obtener_servicios()
-        nombres_empleados = [e['nombre'] for e in lista_empleados]
-        nombres_servicios = [s['nombre'] for s in lista_servicios]
+        empleados = db.obtener_empleados()
+        servicios = db.obtener_servicios()
 
-        # --- INTERFAZ ---
-        ctk.CTkLabel(ventana_registro, text="Nombre del Cliente:").pack(pady=5)
-        entry_cliente = ctk.CTkEntry(ventana_registro, width=300)
-        entry_cliente.pack()
+        ctk.CTkLabel(ventana, text="DATOS DEL CLIENTE", font=("Inter", 16, "bold"), text_color="#2D2424").pack(pady=(25,15))
+        e_nom = ctk.CTkEntry(ventana, placeholder_text="Nombre", width=380, height=40, border_color="#D5D0C5"); e_nom.pack(pady=5)
+        e_ape = ctk.CTkEntry(ventana, placeholder_text="Apellido", width=380, height=40, border_color="#D5D0C5"); e_ape.pack(pady=5)
+        e_mail = ctk.CTkEntry(ventana, placeholder_text="Email", width=380, height=40, border_color="#D5D0C5"); e_mail.pack(pady=5)
 
-        ctk.CTkLabel(ventana_registro, text="Peluquero/a:").pack(pady=5)
-        combo_empleado = ctk.CTkComboBox(ventana_registro, values=nombres_empleados, width=300)
-        combo_empleado.pack()
+        ctk.CTkLabel(ventana, text="DETALLES DEL TURNO", font=("Inter", 16, "bold"), text_color="#2D2424").pack(pady=(25,15))
+        c_emp = ctk.CTkComboBox(ventana, values=[e['nombre'] for e in empleados], width=380, height=40, border_color="#D5D0C5", button_color="#A67B5B"); c_emp.pack(pady=5)
+        c_ser = ctk.CTkComboBox(ventana, values=[s['nombre'] for s in servicios], width=380, height=40, border_color="#D5D0C5", button_color="#A67B5B"); c_ser.pack(pady=5)
 
-        ctk.CTkLabel(ventana_registro, text="Servicio:").pack(pady=5)
-        combo_servicio = ctk.CTkComboBox(ventana_registro, values=nombres_servicios, width=300)
-        combo_servicio.pack()
+        e_fec = ctk.CTkEntry(ventana, width=380, height=40, border_color="#D5D0C5")
+        e_fec.insert(0, datetime.now().strftime("%d/%m/%Y")); e_fec.pack(pady=15)
 
-        # --- SECCIÓN FECHA Y HORA ---
-        ctk.CTkLabel(ventana_registro, text="Fecha (DD/MM/AAAA):").pack(pady=5)
-        # Ponemos la fecha de hoy por defecto
-        fecha_hoy = datetime.now().strftime("%d/%m/%Y")
-        entry_fecha = ctk.CTkEntry(ventana_registro, width=300)
-        entry_fecha.insert(0, fecha_hoy)
-        entry_fecha.pack()
-
-        # Contenedor para los selectores de hora
-        frame_hora = ctk.CTkFrame(ventana_registro, fg_color="transparent")
-        frame_hora.pack(pady=10)
-
-        ctk.CTkLabel(frame_hora, text="Hora:").pack(side="left", padx=5)
-        # Horas de 08 a 21 (típico de peluquería)
-        horas_valores = [f"{i:02d}" for i in range(8, 22)]
-        combo_hora = ctk.CTkComboBox(frame_hora, values=horas_valores, width=70)
-        combo_hora.set("10") # Valor inicial
-        combo_hora.pack(side="left", padx=5)
-
-        ctk.CTkLabel(frame_hora, text="Min:").pack(side="left", padx=5)
-        # Minutos de 15 en 15
-        minutos_valores = ["00", "15", "30", "45"]
-        combo_min = ctk.CTkComboBox(frame_hora, values=minutos_valores, width=70)
-        combo_min.set("00")
-        combo_min.pack(side="left", padx=5)
+        f_h = ctk.CTkFrame(ventana, fg_color="transparent"); f_h.pack(pady=5)
+        cb_h = ctk.CTkComboBox(f_h, values=[f"{i:02d}" for i in range(8,21)], width=85, height=40, border_color="#D5D0C5"); cb_h.set("10"); cb_h.pack(side="left", padx=5)
+        cb_m = ctk.CTkComboBox(f_h, values=["00","15","30","45"], width=85, height=40, border_color="#D5D0C5"); cb_m.set("00"); cb_m.pack(side="left", padx=5)
 
         def guardar():
-            nombre_c = entry_cliente.get()
-            # Armamos la fecha final uniendo los campos
-            fecha_final = f"{entry_fecha.get()} {combo_hora.get()}:{combo_min.get()}"
-            
-            id_c = db.obtener_o_crear_cliente(nombre_c)
-            id_e = next(e['idempleado'] for e in lista_empleados if e['nombre'] == combo_empleado.get())
-            id_s = next(s['idservicio'] for s in lista_servicios if s['nombre'] == combo_servicio.get())
+            id_c = db.obtener_o_crear_cliente(e_nom.get(), e_ape.get(), e_mail.get())
+            try:
+                id_e = next(e['idempleado'] for e in empleados if e['nombre'] == c_emp.get())
+                id_s = next(s['idservicio'] for s in servicios if s['nombre'] == c_ser.get())
+                fecha = f"{e_fec.get()} {cb_h.get()}:{cb_m.get()}"
+                if db.registrar_reserva(id_c, id_e, id_s, fecha):
+                    ventana.destroy(); self.cargar_datos()
+            except: pass
 
-            if id_c and db.registrar_reserva(id_c, id_e, id_s, fecha_final):
-                ventana_registro.destroy()
-                self.cargar_datos()
-
-        ctk.CTkButton(ventana_registro, text="Confirmar Turno", fg_color="blue", command=guardar).pack(pady=30)
+        ctk.CTkButton(ventana, text="CONFIRMAR RESERVA", font=("Inter", 14, "bold"), 
+                      fg_color="#6B8E23", hover_color="#556B2F", width=300, height=50,
+                      command=guardar).pack(pady=40)
