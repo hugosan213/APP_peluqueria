@@ -1,14 +1,14 @@
 import mysql.connector
 from mysql.connector import Error
 from datetime import datetime
+
 class Database:
     def __init__(self):
-        # Datos de tu servidor local en Esquel
         self.config = {
             'host': '127.0.0.1',
-            'user': 'root', # Cambiá esto por tu usuario de MySQL
-            'password': '17032003Hsanti', # Poné tu contraseña de MySQL
-            'database': 'Peluqueria'
+            'user': 'root', 
+            'password': '17032003Hsanti', 
+            'database': 'peluqueria'
         }
 
     def conectar(self):
@@ -20,132 +20,222 @@ class Database:
             print(f"Error al conectar a la base de datos: {e}")
             return None
 
-    def obtener_agenda(self):
+    # --- MÉTODOS DE SERVICIOS (ABM) ---
+    def obtener_servicios_detallados(self):
         conexion = self.conectar()
         if conexion:
             cursor = conexion.cursor(dictionary=True)
-            # Filtramos donde la fecha sea mayor o igual a "ahora"
-            sql = "SELECT * FROM vista_agenda_completa WHERE Fecha_Raw >= NOW()"
-            cursor.execute(sql)
+            cursor.execute("SELECT idservicio, nombre, precio, duracion FROM servicio")
             res = cursor.fetchall()
-            cursor.close()
-            conexion.close()
+            cursor.close(); conexion.close()
             return res
         return []
 
-    def registrar_reserva(self, id_cliente, id_empleado, id_servicio, fecha_usuario):
-        try:
-            # (Mantener la lógica de conversión de fecha que ya tenemos)
-            formatos = ['%d/%m/%Y %H:%M:%S', '%d/%m/%Y %H:%M', '%d/%m/%Y']
-            fecha_dt = next((datetime.strptime(fecha_usuario, f) for f in formatos if True), None)
-            # ... (Validaciones de fecha)
-            fecha_mysql = fecha_dt.strftime('%Y-%m-%d %H:%M:%S')
-
-            conexion = self.conectar()
-            if conexion:
-                cursor = conexion.cursor(dictionary=True)
-                
-                # VALIDACIÓN: Buscar si el empleado ya tiene un turno en esa fecha/hora
-                sql_check = "SELECT idreserva FROM reserva WHERE empleado_idempleado = %s AND fecha_inicio = %s"
-                cursor.execute(sql_check, (id_empleado, fecha_mysql))
-                
-                if cursor.fetchone():
-                    print("¡Error! El peluquero ya tiene un turno a esa hora.")
-                    return False # Aquí podrías lanzar una alerta en la UI más adelante
-                
-                # Si está libre, insertamos
-                sql_ins = """INSERT INTO reserva (cliente_idcliente, empleado_idempleado, 
-                             servicio_idservicio, fecha_inicio, estado) 
-                             VALUES (%s, %s, %s, %s, 'pendiente')"""
-                cursor.execute(sql_ins, (id_cliente, id_empleado, id_servicio, fecha_mysql))
-                conexion.commit()
-                return True
-        except Exception as e:
-            print(f"Error: {e}")
-            return False
-
-    def obtener_o_crear_cliente(self, nombre, apellido, email):
-        conexion = self.conectar()
-        if conexion:
-            cursor = conexion.cursor(dictionary=True)
-            try:
-                # Buscamos por email (el cliente no necesita dar su DNI)
-                cursor.execute("""SELECT c.idcliente FROM cliente c 
-                                  JOIN persona p ON c.persona_idpersona = p.idpersona 
-                                  WHERE p.email = %s""", (email,))
-                resultado = cursor.fetchone()
-                if resultado: return resultado['idcliente']
-                
-                # Si es nuevo, creamos la persona (sin campo DNI)
-                cursor.execute("INSERT INTO persona (nombre, apellido, email) VALUES (%s, %s, %s)", 
-                               (nombre, apellido, email))
-                id_p = cursor.lastrowid
-                cursor.execute("INSERT INTO cliente (persona_idpersona) VALUES (%s)", (id_p,))
-                conexion.commit()
-                return cursor.lastrowid
-            except Exception as e:
-                print(f"Error cliente: {e}")
-            finally:
-                cursor.close(); conexion.close()
-        return None
-
-    def agregar_empleado(self, nombre, apellido, email, dni):
-        conexion = self.conectar()
-        if conexion:
-            cursor = conexion.cursor()
-            try:
-                # Insertamos a la persona con su DNI
-                sql = "INSERT INTO persona (nombre, apellido, email, dni) VALUES (%s, %s, %s, %s)"
-                cursor.execute(sql, (nombre, apellido, email, dni))
-                id_p = cursor.lastrowid
-                
-                cursor.execute("INSERT INTO empleado (persona_idpersona) VALUES (%s)", (id_p,))
-                conexion.commit()
-                return True
-            except Exception as e:
-                print(f"Error empleado: {e}")
-            finally:
-                cursor.close(); conexion.close()
-        return False
-
-    def obtener_empleados(self):
-        conexion = self.conectar()
-        if conexion:
-            cursor = conexion.cursor(dictionary=True)
-            cursor.execute("SELECT e.idempleado, p.nombre FROM empleado e JOIN persona p ON e.persona_idpersona = p.idpersona")
-            res = cursor.fetchall()
-            cursor.close()
-            conexion.close()
-            return res
-        return []
-
+    # Método agregado para el ComboBox del formulario de reservas[cite: 10]
     def obtener_servicios(self):
         conexion = self.conectar()
         if conexion:
             cursor = conexion.cursor(dictionary=True)
             cursor.execute("SELECT idservicio, nombre FROM servicio")
             res = cursor.fetchall()
-            cursor.close()
-            conexion.close()
+            cursor.close(); conexion.close()
             return res
         return []
 
-    def agregar_empleado(self, nombre, apellido, email):
+    def agregar_servicio_nuevo(self, nombre, precio, duracion):
         conexion = self.conectar()
         if conexion:
             cursor = conexion.cursor()
             try:
-                # 1. Crear persona con datos completos
-                cursor.execute("INSERT INTO persona (nombre, apellido, email) VALUES (%s, %s, %s)", 
-                               (nombre, apellido, email))
-                id_p = cursor.lastrowid
-                # 2. Crear el registro en la tabla empleado
-                cursor.execute("INSERT INTO empleado (persona_idpersona) VALUES (%s)", (id_p,))
+                sql = "INSERT INTO servicio (nombre, precio, duracion) VALUES (%s, %s, %s)"
+                cursor.execute(sql, (nombre, precio, duracion))
                 conexion.commit()
                 return True
             except Exception as e:
-                print(f"Error empleado: {e}")
+                print(f"Error al agregar servicio: {e}")
+                return False
             finally:
-                cursor.close()
-                conexion.close()
+                cursor.close(); conexion.close()
+        return False
+    
+
+    def eliminar_servicio(self, id_servicio):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor()
+            try:
+                sql = "DELETE FROM servicio WHERE idservicio = %s"
+                cursor.execute(sql, (id_servicio,))
+                conexion.commit()
+                return True
+            except Exception:
+                print("Error: No se puede eliminar un servicio que tiene turnos asociados.")
+                return False
+            finally:
+                cursor.close(); conexion.close()
+        return False
+
+    def actualizar_servicio(self, id_servicio, precio, duracion):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor()
+            try:
+                sql = "UPDATE servicio SET precio = %s, duracion = %s WHERE idservicio = %s"
+                cursor.execute(sql, (precio, duracion, id_servicio))
+                conexion.commit()
+                return True
+            finally: cursor.close(); conexion.close()
+        return False
+
+    # --- MÉTODOS DE AGENDA Y COBRO ---
+    def obtener_agenda(self):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            sql = "SELECT * FROM vista_agenda_completa WHERE Fecha_Raw >= NOW()"
+            cursor.execute(sql)
+            res = cursor.fetchall()
+            cursor.close(); conexion.close()
+            return res
+        return []
+
+    # Lógica de registro implementada[cite: 10]
+    def registrar_reserva(self, id_cliente, id_empleado, id_servicio, fecha_sql):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor()
+            try:
+                sql = "INSERT INTO reserva (cliente_idcliente, empleado_idempleado, servicio_idservicio, fecha_inicio, estado) VALUES (%s, %s, %s, %s, 'pendiente')"
+                cursor.execute(sql, (id_cliente, id_empleado, id_servicio, fecha_sql))
+                conexion.commit()
+                return True
+            except Exception as e:
+                print(f"Error al registrar reserva: {e}")
+                return False
+            finally: cursor.close(); conexion.close()
+        return False
+
+    def obtener_o_crear_cliente(self, nombre, apellido, mail):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            try:
+                cursor.execute("SELECT c.idcliente FROM cliente c JOIN persona p ON c.persona_idpersona = p.idpersona WHERE p.mail = %s", (mail,))
+                resultado = cursor.fetchone()
+                if resultado: return resultado['idcliente']
+                cursor.execute("INSERT INTO persona (nombre, apellido, mail) VALUES (%s, %s, %s)", (nombre, apellido, mail))
+                id_p = cursor.lastrowid
+                cursor.execute("INSERT INTO cliente (persona_idpersona) VALUES (%s)", (id_p,))
+                conexion.commit()
+                return cursor.lastrowid
+            finally: cursor.close(); conexion.close()
+        return None
+
+    def obtener_clientes_lista(self):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            cursor.execute("SELECT c.idcliente, p.nombre, p.apellido, p.mail, c.notas_relevantes FROM cliente c JOIN persona p ON c.persona_idpersona = p.idpersona ORDER BY p.apellido ASC")
+            res = res = cursor.fetchall()
+            cursor.close(); conexion.close()
+            return res
+        return []
+
+    def actualizar_notas_cliente(self, id_cliente, notas):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor()
+            try:
+                sql = "UPDATE cliente SET notas_relevantes = %s WHERE idcliente = %s"
+                cursor.execute(sql, (notas, id_cliente))
+                conexion.commit()
+                return True
+            finally: cursor.close(); conexion.close()
+        return False
+
+    def obtener_metodos_pago(self):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            cursor.execute("SELECT idmetodopago, tipoPago FROM metodo_pago")
+            res = cursor.fetchall()
+            cursor.close(); conexion.close()
+            return res
+        return []
+
+    def finalizar_y_cobrar(self, id_reserva, monto, id_metodo):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor()
+            try:
+                cursor.execute("UPDATE reserva SET estado = 'finalizada', monto_total = %s WHERE idreserva = %s", (monto, id_reserva))
+                cursor.execute("INSERT INTO pago (monto, fecha, metodo_pago_idmetodopago, reserva_idreserva) VALUES (%s, NOW(), %s, %s)", (monto, id_metodo, id_reserva))
+                conexion.commit()
+                return True
+            finally: cursor.close(); conexion.close()
+        return False
+
+    def obtener_caja_diaria(self):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            cursor.execute("SELECT mp.tipoPago, SUM(p.monto) as total FROM pago p JOIN metodo_pago mp ON p.metodo_pago_idmetodopago = mp.idmetodopago WHERE DATE(p.fecha) = CURDATE() GROUP BY mp.tipoPago")
+            res = cursor.fetchall()
+            cursor.close(); conexion.close()
+            return res
+        return []
+
+    # --- MÉTODO DE STOCK ---
+    def obtener_productos_stock(self):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM producto")
+            res = cursor.fetchall()
+            cursor.close(); conexion.close()
+            return res
+        return []
+
+    def agregar_producto_stock(self, nombre, stock_actual, stock_minimo, unidad):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor()
+            try:
+                sql = "INSERT INTO producto (nombre, stock_actual, stock_minimo, unidad) VALUES (%s, %s, %s, %s)"
+                cursor.execute(sql, (nombre, stock_actual, stock_minimo, unidad))
+                conexion.commit()
+                return True
+            except Exception as e:
+                print(f"Error al agregar producto: {e}")
+                return False
+            finally:
+                cursor.close(); conexion.close()
+        return False
+
+    # --- EMPLEADOS ---
+    def obtener_empleados(self):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            cursor.execute("SELECT e.idempleado, p.nombre FROM empleado e JOIN persona p ON e.persona_idpersona = p.idpersona")
+            res = cursor.fetchall()
+            cursor.close(); conexion.close()
+            return res
+        return []
+
+    def agregar_empleado(self, nombre, apellido, mail, dni):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor()
+            try:
+                sql_p = "INSERT INTO persona (nombre, apellido, mail, dni) VALUES (%s, %s, %s, %s)"
+                cursor.execute(sql_p, (nombre, apellido, mail, dni))
+                id_persona = cursor.lastrowid
+                cursor.execute("INSERT INTO empleado (persona_idpersona) VALUES (%s)", (id_persona,))
+                conexion.commit()
+                return True
+            except Exception as e:
+                print(f"Error al agregar empleado: {e}")
+                return False
+            finally: cursor.close(); conexion.close()
         return False
