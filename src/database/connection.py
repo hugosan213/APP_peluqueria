@@ -92,7 +92,24 @@ class Database:
         conexion = self.conectar()
         if conexion:
             cursor = conexion.cursor(dictionary=True)
-            sql = "SELECT * FROM vista_agenda_completa WHERE Fecha_Raw >= NOW()"
+            # Quitamos el filtro de tiempo estricto y priorizamos el estado
+            sql = """SELECT * FROM vista_agenda_completa 
+                     WHERE Estado = 'pendiente' 
+                     ORDER BY Fecha_Raw ASC"""
+            cursor.execute(sql)
+            res = cursor.fetchall()
+            cursor.close(); conexion.close()
+            return res
+        return []
+    
+    def obtener_historial_cortes(self):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            # Traemos los últimos 50 cortes realizados
+            sql = """SELECT * FROM vista_agenda_completa 
+                     WHERE Estado = 'finalizada' 
+                     ORDER BY Fecha_Raw DESC LIMIT 50"""
             cursor.execute(sql)
             res = cursor.fetchall()
             cursor.close(); conexion.close()
@@ -239,3 +256,46 @@ class Database:
                 return False
             finally: cursor.close(); conexion.close()
         return False
+
+    def registrar_egreso(self, monto, descripcion):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor()
+            try:
+                sql = "INSERT INTO egreso (monto, descripcion) VALUES (%s, %s)"
+                cursor.execute(sql, (monto, descripcion))
+                conexion.commit()
+                return True
+            finally: cursor.close(); conexion.close()
+        return False
+
+    def obtener_total_egresos_hoy(self):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            # Sumamos todos los gastos del día actual
+            cursor.execute("SELECT SUM(monto) as total FROM egreso WHERE DATE(fecha) = CURDATE()")
+            res = cursor.fetchone()
+            cursor.close(); conexion.close()
+            return res['total'] if res['total'] else 0
+        return 0
+
+    def obtener_estadisticas_ingresos(self, periodo):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            # Definimos el formato según el periodo solicitado
+            if periodo == "Semanal":
+                # Agrupa por el número de semana del año[cite: 4]
+                sql = "SELECT WEEK(fecha) as etiqueta, SUM(monto) as total FROM pago WHERE YEAR(fecha) = YEAR(NOW()) GROUP BY etiqueta"
+            elif periodo == "Mensual":
+                # Agrupa por nombre de mes[cite: 4]
+                sql = "SELECT MONTHNAME(fecha) as etiqueta, SUM(monto) as total FROM pago WHERE YEAR(fecha) = YEAR(NOW()) GROUP BY etiqueta"
+            else: # Anual
+                sql = "SELECT YEAR(fecha) as etiqueta, SUM(monto) as total GROUP BY etiqueta"
+            
+            cursor.execute(sql)
+            res = cursor.fetchall()
+            cursor.close(); conexion.close()
+            return res
+        return []

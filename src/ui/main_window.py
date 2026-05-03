@@ -21,7 +21,9 @@ class MainWindow(ctk.CTk):
         self.tab_caja = self.tabview.add("💰 Caja")
         self.tab_stock = self.tabview.add("📦 Stock")
         self.tab_gestion = self.tabview.add("⚙️ Config.")
+        self.tab_stats = self.tabview.add("📊 Estadísticas")
 
+        self.setup_tab_stats()
         self.setup_tab_agenda()
         self.setup_tab_clientes()
         self.setup_tab_servicios()
@@ -34,11 +36,30 @@ class MainWindow(ctk.CTk):
     def setup_tab_agenda(self):
         self.sidebar_agenda = ctk.CTkFrame(self.tab_agenda, width=220, fg_color="#F2F0EB")
         self.sidebar_agenda.pack(side="left", fill="y")
+        
         ctk.CTkButton(self.sidebar_agenda, text="➕ Nueva Reserva", fg_color="#6B8E23", command=self.abrir_formulario).pack(pady=20, padx=20, fill="x")
         ctk.CTkButton(self.sidebar_agenda, text="🔄 Actualizar", fg_color="#A67B5B", command=self.cargar_datos).pack(pady=10, padx=20, fill="x")
+        
+        # Nuevo botón de Historial
+        ctk.CTkButton(self.sidebar_agenda, text="📜 Ver Historial", fg_color="#5C4033", command=self.cargar_historial).pack(pady=10, padx=20, fill="x")
+        
         self.frame_agenda = ctk.CTkScrollableFrame(self.tab_agenda, fg_color="transparent")
         self.frame_agenda.pack(side="right", fill="both", expand=True, padx=20)
 
+    def cargar_historial(self):
+        for widget in self.frame_agenda.winfo_children(): widget.destroy()
+        db = Database()
+        # Ponemos un título para saber que estamos en el pasado
+        ctk.CTkLabel(self.frame_agenda, text="HISTORIAL DE CORTES FINALIZADOS", font=("Inter", 16, "bold")).pack(pady=10)
+        
+        for t in db.obtener_historial_cortes():
+            card = ctk.CTkFrame(self.frame_agenda, fg_color="#E5E1DA", corner_radius=12) # Color grisáceo para diferenciar
+            card.pack(fill="x", pady=6, padx=10)
+            
+            ctk.CTkLabel(card, text=f"🕒 {t['Fecha_Hora']} | 👤 {t['Cliente']}", font=("Inter", 14)).pack(side="left", padx=20, pady=15)
+            ctk.CTkLabel(card, text=f"✅ {t['Servicio']}", text_color="#6B8E23", font=("Inter", 12, "italic")).pack(side="right", padx=20)
+
+            
     def cargar_datos(self):
         for widget in self.frame_agenda.winfo_children(): widget.destroy()
         db = Database()
@@ -319,13 +340,128 @@ class MainWindow(ctk.CTk):
                       font=("Inter", 14, "bold"), height=50, width=380, command=guardar).pack(pady=40)
 
     def abrir_ventana_cobro(self, t):
-        v = ctk.CTkToplevel(self); v.geometry("350x400"); v.attributes("-topmost", True)
-        db = Database(); metodos = db.obtener_metodos_pago()
-        ctk.CTkLabel(v, text="COBRAR TURNO").pack(pady=20)
-        em = ctk.CTkEntry(v, placeholder_text="Monto"); em.pack(pady=10)
-        cb = ctk.CTkComboBox(v, values=[m['tipoPago'] for m in metodos]); cb.pack(pady=10)
+        v = ctk.CTkToplevel(self)
+        v.geometry("350x450")
+        v.attributes("-topmost", True)
+        v.title("Procesar Pago")
+        
+        db = Database()
+        metodos = db.obtener_metodos_pago()
+        
+        id_reserva = t.get('idreserva')
+        precio_base = t.get('Precio_Sugerido', 0) # Traemos el precio de la reserva
+
+        ctk.CTkLabel(v, text="FINALIZAR Y COBRAR", font=("Inter", 16, "bold")).pack(pady=20)
+        
+        ctk.CTkLabel(v, text=f"Servicio: {t['Servicio']}", font=("Inter", 12)).pack()
+        
+        ctk.CTkLabel(v, text="Confirmar Monto:", font=("Inter", 12)).pack(pady=(15, 0))
+        em = ctk.CTkEntry(v, placeholder_text="Monto", width=200)
+        em.insert(0, str(precio_base)) # ¡Acá sucede la magia! Ya aparece el precio
+        em.pack(pady=5)
+        
+        ctk.CTkLabel(v, text="Método de Pago:", font=("Inter", 12)).pack(pady=(10, 0))
+        cb = ctk.CTkComboBox(v, values=[m['tipoPago'] for m in metodos], width=200)
+        cb.pack(pady=5)
+
         def conf():
-            id_m = next(m['idmetodopago'] for m in metodos if m['tipoPago'] == cb.get())
-            if db.finalizar_y_cobrar(t['idreserva'], em.get(), id_m):
-                v.destroy(); self.cargar_datos(); self.cargar_caja_diaria()
-        ctk.CTkButton(v, text="Confirmar", command=conf).pack(pady=20)
+            try:
+                monto = em.get()
+                id_m = next(m['idmetodopago'] for m in metodos if m['tipoPago'] == cb.get())
+                
+                if db.finalizar_y_cobrar(id_reserva, monto, id_m):
+                    v.destroy()
+                    self.cargar_datos()
+                    self.cargar_caja_diaria()
+            except Exception as e:
+                print(f"Error al cobrar: {e}")
+
+        ctk.CTkButton(v, text="Confirmar Pago", fg_color="#6B8E23", height=45, command=conf).pack(pady=30)
+    def setup_tab_caja(self):
+        # Limpiamos lo que haya
+        for widget in self.tab_caja.winfo_children(): widget.destroy()
+        
+        f_top = ctk.CTkFrame(self.tab_caja, fg_color="transparent")
+        f_top.pack(pady=20, fill="x", padx=50)
+        
+        ctk.CTkLabel(f_top, text="CONTROL DE CAJA DIARIA", font=("Inter", 22, "bold")).pack(side="left")
+        ctk.CTkButton(f_top, text="- Retirar Dinero / Gasto", fg_color="#CD5C5C", command=self.abrir_formulario_egreso).pack(side="right")
+        
+        self.frame_caja_info = ctk.CTkFrame(self.tab_caja, fg_color="#F2F0EB", corner_radius=15)
+        self.frame_caja_info.pack(pady=10, padx=50, fill="both", expand=True)
+        self.cargar_caja_diaria()
+
+    def cargar_caja_diaria(self):
+        for widget in self.frame_caja_info.winfo_children(): widget.destroy()
+        db = Database()
+        ingresos = db.obtener_caja_diaria()
+        egresos_total = db.obtener_total_egresos_hoy()
+        total_ingresos = sum(float(r['total']) for r in ingresos)
+        
+        # Mostrar Ingresos
+        ctk.CTkLabel(self.frame_caja_info, text="INGRESOS", font=("Inter", 14, "bold")).pack(pady=(10,5))
+        for r in ingresos:
+            card = ctk.CTkFrame(self.frame_caja_info, fg_color="#FFFFFF"); card.pack(fill="x", padx=40, pady=2)
+            ctk.CTkLabel(card, text=f"{r['tipoPago']}: $ {r['total']}").pack(pady=5)
+
+        # Mostrar Egresos
+        ctk.CTkFrame(self.frame_caja_info, height=2, fg_color="#D2B48C").pack(fill="x", padx=30, pady=15)
+        ctk.CTkLabel(self.frame_caja_info, text=f"TOTAL EGRESOS: - $ {egresos_total}", text_color="#CD5C5C", font=("Inter", 16, "bold")).pack()
+
+        # Saldo Final
+        saldo_neto = total_ingresos - float(egresos_total)
+        ctk.CTkLabel(self.frame_caja_info, text=f"SALDO EN CAJA: $ {saldo_neto}", 
+                     font=("Inter", 26, "bold"), text_color="#2D2424").pack(pady=20)
+
+    def abrir_formulario_egreso(self):
+        v = ctk.CTkToplevel(self); v.geometry("350x400"); v.attributes("-topmost", True)
+        ctk.CTkLabel(v, text="SALIDA DE DINERO", font=("Inter", 16, "bold")).pack(pady=20)
+        em = ctk.CTkEntry(v, placeholder_text="Monto", width=250); em.pack(pady=10)
+        ed = ctk.CTkEntry(v, placeholder_text="Descripción", width=250); ed.pack(pady=10)
+        
+        def guardar():
+            if Database().registrar_egreso(em.get(), ed.get()):
+                v.destroy(); self.cargar_caja_diaria()
+        ctk.CTkButton(v, text="Confirmar Gasto", fg_color="#CD5C5C", command=guardar).pack(pady=30)
+
+    def setup_tab_stats(self):
+        # Título y Selector de Período
+        f_top = ctk.CTkFrame(self.tab_stats, fg_color="transparent")
+        f_top.pack(pady=20, fill="x", padx=50)
+        
+        ctk.CTkLabel(f_top, text="REPORTES DE INGRESOS", font=("Inter", 22, "bold")).pack(side="left")
+        
+        self.selector_periodo = ctk.CTkComboBox(f_top, values=["Semanal", "Mensual", "Anual"], 
+                                                command=lambda _: self.actualizar_grafico())
+        self.selector_periodo.set("Mensual")
+        self.selector_periodo.pack(side="right")
+
+        # Contenedor para los resultados
+        self.frame_grafico = ctk.CTkFrame(self.tab_stats, fg_color="#F2F0EB", corner_radius=15)
+        self.frame_grafico.pack(pady=10, padx=50, fill="both", expand=True)
+        self.actualizar_grafico()
+
+    def actualizar_grafico(self):
+        for widget in self.frame_grafico.winfo_children(): widget.destroy()
+        
+        periodo = self.selector_periodo.get()
+        datos = Database().obtener_estadisticas_ingresos(periodo)
+
+        if not datos:
+            ctk.CTkLabel(self.frame_grafico, text=f"No hay datos suficientes para el reporte {periodo.lower()}.").pack(pady=100)
+            return
+
+        # Generamos barritas visuales simples[cite: 5]
+        max_valor = max(float(d['total']) for d in datos) if datos else 1
+        
+        for d in datos:
+            row = ctk.CTkFrame(self.frame_grafico, fg_color="transparent")
+            row.pack(fill="x", padx=30, pady=10)
+            
+            ctk.CTkLabel(row, text=str(d['etiqueta']).upper(), width=100, anchor="w").pack(side="left")
+            
+            # Calculamos el ancho de la barra proporcional al total[cite: 5]
+            ancho_barra = (float(d['total']) / max_valor) * 400
+            ctk.CTkFrame(row, width=ancho_barra, height=20, fg_color="#D2B48C", corner_radius=5).pack(side="left", padx=10)
+            
+            ctk.CTkLabel(row, text=f"$ {d['total']}", font=("Inter", 12, "bold")).pack(side="left")
