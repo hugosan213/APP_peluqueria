@@ -314,20 +314,40 @@ class Database:
         conexion = self.conectar()
         if conexion:
             cursor = conexion.cursor(dictionary=True)
-            # Definimos el formato según el periodo solicitado
-            if periodo == "Semanal":
-                # Agrupa por el número de semana del año[cite: 4]
-                sql = "SELECT WEEK(fecha) as etiqueta, SUM(monto) as total FROM pago WHERE YEAR(fecha) = YEAR(NOW()) GROUP BY etiqueta"
-            elif periodo == "Mensual":
-                # Agrupa por nombre de mes[cite: 4]
-                sql = "SELECT MONTHNAME(fecha) as etiqueta, SUM(monto) as total FROM pago WHERE YEAR(fecha) = YEAR(NOW()) GROUP BY etiqueta"
-            else: # Anual
-                sql = "SELECT YEAR(fecha) as etiqueta, SUM(monto) as total GROUP BY etiqueta"
+            # Usamos 'fechaPago' que es el nombre real en tu DB[cite: 11]
             
-            cursor.execute(sql)
-            res = cursor.fetchall()
-            cursor.close(); conexion.close()
-            return res
+            if periodo == "Semanal":
+                # Agrupa por nombre del día para que sea más visual
+                sql = """SELECT DAYNAME(fecha) as etiqueta, SUM(monto) as total 
+                        FROM pago 
+                        WHERE YEARWEEK(fecha) = YEARWEEK(NOW()) 
+                        GROUP BY etiqueta ORDER BY DAYOFWEEK(fecha)"""
+            
+            elif periodo == "Mensual":
+                # Agrupa por el día del mes (1, 2, 3...)
+                sql = """SELECT DATE_FORMAT(fecha, '%d/%m') as etiqueta, SUM(monto) as total 
+                        FROM pago 
+                        WHERE MONTH(fecha) = MONTH(NOW()) AND YEAR(fecha) = YEAR(NOW()) 
+                        GROUP BY etiqueta"""
+            
+            else: # Anual
+                # Agrupa por mes
+                sql = """SELECT MONTHNAME(fecha) as etiqueta, SUM(monto) as total 
+                        FROM pago 
+                        WHERE YEAR(fecha) = YEAR(NOW()) 
+                        GROUP BY MONTH(fecha) 
+                        ORDER BY MONTH(fecha)"""
+            
+            try:
+                cursor.execute(sql)
+                res = cursor.fetchall()
+                return res
+            except Exception as e:
+                print(f"Error en SQL: {e}")
+                return []
+            finally:
+                cursor.close()
+                conexion.close()
         return []
 
     def validar_usuario(self, usuario, password):
