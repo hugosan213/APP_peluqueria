@@ -16,8 +16,8 @@ class ClientesTab:
         self.ent_bus_cli = ctk.CTkEntry(f_busqueda, placeholder_text="Buscar cliente...", width=400)
         self.ent_bus_cli.pack(side="left", padx=10)
         
-        ctk.CTkButton(f_busqueda, text="🔍", width=50, fg_color="#D2B48C", text_color="black", 
-                      command=self.cargar_lista_clientes).pack(side="left")
+        ctk.CTkButton(f_busqueda, text="🔍", width=50, fg_color="#C49E6F", hover_color="#E0C085", text_color="black", corner_radius=10,
+                      font=("Inter", 12, "bold"), command=self.cargar_lista_clientes).pack(side="left")
         
         self.frame_lista_clientes = ctk.CTkScrollableFrame(self.master, fg_color="transparent")
         self.frame_lista_clientes.pack(fill="both", expand=True, padx=20)
@@ -43,8 +43,8 @@ class ClientesTab:
             
             ctk.CTkLabel(row, text=nombre_completo.upper(), font=("Inter", 13, "bold"), width=250, anchor="w").pack(side="left", padx=20, pady=12)
             
-            ctk.CTkButton(row, text="📋 Ver Notas", width=100, fg_color="#A67B5B", 
-                          command=lambda cli=c: self.abrir_notas_cliente(cli)).pack(side="right", padx=15)
+            ctk.CTkButton(row, text="📋 Ver Notas", width=100, fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
+                          font=("Inter", 11, "bold"), command=lambda cli=c: self.abrir_notas_cliente(cli)).pack(side="right", padx=15)
 
     def abrir_notas_cliente(self, cliente):
         """Abre la ventana de notas corrigiendo el error de referencia"""
@@ -67,4 +67,4 @@ class ClientesTab:
                 v.destroy()
                 self.cargar_lista_clientes()
         
-        ctk.CTkButton(v, text="Guardar Cambios", fg_color="#6B8E23", command=guardar).pack(pady=20)
+        ctk.CTkButton(v, text="Guardar Cambios", fg_color="#8B4513", hover_color="#A0522D", corner_radius=8, command=guardar).pack(pady=20)

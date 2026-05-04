@@ -34,8 +34,8 @@ class LoginWindow(ctk.CTk):
         # Botón de Ingreso
         self.btn_login = ctk.CTkButton(self, text="INICIAR SESIÓN", 
                                         command=self.intentar_login,
-                                        width=280, height=50, corner_radius=10,
-                                        fg_color="#6B8E23", hover_color="#556B2F",
+                                        width=280, height=52, corner_radius=10,
+                                        fg_color="#8B4513", hover_color="#A0522D",
                                         font=("Inter", 14, "bold"))
         self.btn_login.pack(pady=40)
 

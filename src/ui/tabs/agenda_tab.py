@@ -15,14 +15,14 @@ class AgendaTab:
         self.sidebar = ctk.CTkFrame(self.master, width=220, fg_color="#F2F0EB")
         self.sidebar.pack(side="left", fill="y")
         
-        ctk.CTkButton(self.sidebar, text="➕ Nueva Reserva", fg_color="#6B8E23", 
+        ctk.CTkButton(self.sidebar, text="➕ Nueva Reserva", fg_color="#8B4513", hover_color="#A0522D", corner_radius=8,
                       command=self.abrir_formulario).pack(pady=20, padx=20, fill="x")
         
-        ctk.CTkButton(self.sidebar, text="🔄 Actualizar", fg_color="#A67B5B", 
-                      command=self.cargar_datos).pack(pady=10, padx=20, fill="x")
+        ctk.CTkButton(self.sidebar, text="🔄 Actualizar", fg_color="#C49E6F", hover_color="#E0C085", corner_radius=10,
+                      font=("Inter", 12, "bold"), command=self.cargar_datos).pack(pady=10, padx=20, fill="x")
         
-        ctk.CTkButton(self.sidebar, text="📜 Ver Historial", fg_color="#5C4033", 
-                      command=self.cargar_historial).pack(pady=10, padx=20, fill="x")
+        ctk.CTkButton(self.sidebar, text="📜 Ver Historial", fg_color="#C49E6F", hover_color="#E0C085", corner_radius=10,
+                      font=("Inter", 12, "bold"), command=self.cargar_historial).pack(pady=10, padx=20, fill="x")
         
         self.frame_agenda = ctk.CTkScrollableFrame(self.master, fg_color="transparent")
         self.frame_agenda.pack(side="right", fill="both", expand=True, padx=20)
@@ -47,8 +47,8 @@ class AgendaTab:
                          font=("Inter", 14, "bold")).pack(side="left", padx=20, pady=15)
 
             if t.get('Estado') != 'finalizada':
-                ctk.CTkButton(card, text="💵 Cobrar", width=80, fg_color="#6B8E23", 
-                              command=lambda trn=t: self.abrir_ventana_cobro(trn)).pack(side="right", padx=10)
+                ctk.CTkButton(card, text="💵 Cobrar", width=90, fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
+                              font=("Inter", 11, "bold"), command=lambda trn=t: self.abrir_ventana_cobro(trn)).pack(side="right", padx=10)
             
             ctk.CTkLabel(card, text=f"✂️ {t['Servicio']}", text_color="#5C4033").pack(side="right", padx=20)
         self.master.update_idletasks()
@@ -105,8 +105,8 @@ class AgendaTab:
             except Exception as ex:
                 print(f"Error al guardar reserva: {ex}")
 
-        ctk.CTkButton(v, text="CONFIRMAR TURNO", fg_color="#6B8E23", font=("Inter", 14, "bold"), 
-                      height=50, width=380, command=guardar).pack(pady=40)
+        ctk.CTkButton(v, text="CONFIRMAR TURNO", fg_color="#8B4513", hover_color="#A0522D", font=("Inter", 14, "bold"), 
+                      height=50, width=380, corner_radius=10, command=guardar).pack(pady=40)
 
     def abrir_ventana_cobro(self, t):
         # 1. CAMBIO CRÍTICO: Usamos self.master (el tab) en lugar de self
@@ -149,4 +149,5 @@ class AgendaTab:
             except Exception as e:
                 print(f"Error al cobrar: {e}")
 
-        ctk.CTkButton(v, text="Confirmar Pago", fg_color="#6B8E23", height=45, command=conf).pack(pady=30)
+        ctk.CTkButton(v, text="Confirmar Pago", fg_color="#8B4513", hover_color="#A0522D", height=45, corner_radius=10,
+                      font=("Inter", 12, "bold"), command=conf).pack(pady=30)

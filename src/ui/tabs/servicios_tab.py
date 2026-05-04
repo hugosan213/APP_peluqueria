@@ -16,7 +16,8 @@ class ServiciosTab:
         
         # Corrección: Acceso al rol a través de self.parent[cite: 18]
         if self.parent.usuario_actual['rol'] == 'admin':
-            ctk.CTkButton(f_top, text="+ Nuevo Servicio", fg_color="#6B8E23", command=self.abrir_formulario_servicio).pack(side="right")
+            ctk.CTkButton(f_top, text="+ Nuevo Servicio", fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
+                          font=("Inter", 12, "bold"), command=self.abrir_formulario_servicio).pack(side="right")
         
         self.frame_lista_precios = ctk.CTkScrollableFrame(self.master, fg_color="transparent")
         self.frame_lista_precios.pack(fill="both", expand=True, padx=30)
@@ -48,10 +49,10 @@ class ServiciosTab:
             e_d.pack(side="left", padx=5)
             
             if es_admin:
-                ctk.CTkButton(row, text="💾", width=40, fg_color="#6B8E23", 
-                              command=lambda i=s['idservicio'], p=e_p, d=e_d: self.guardar_cambio_servicio(i, p.get(), d.get())).pack(side="right", padx=5)
-                ctk.CTkButton(row, text="🗑️", width=40, fg_color="#CD5C5C", 
-                              command=lambda i=s['idservicio']: self.borrar_servicio(i)).pack(side="right", padx=5)
+                ctk.CTkButton(row, text="💾", width=40, fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
+                              font=("Inter", 11, "bold"), command=lambda i=s['idservicio'], p=e_p, d=e_d: self.guardar_cambio_servicio(i, p.get(), d.get())).pack(side="right", padx=5)
+                ctk.CTkButton(row, text="🗑️", width=40, fg_color="#CD5C5C", hover_color="#A52A2A", corner_radius=10,
+                              font=("Inter", 11, "bold"), command=lambda i=s['idservicio']: self.borrar_servicio(i)).pack(side="right", padx=5)
 
     def guardar_cambio_servicio(self, id_s, p, d):
         if self.db.actualizar_servicio(id_s, p, d):
@@ -73,4 +74,4 @@ class ServiciosTab:
             if self.db.agregar_servicio_nuevo(en.get(), ep.get(), ed.get()):
                 v.destroy()
                 self.cargar_servicios_edicion()
-        ctk.CTkButton(v, text="Guardar", fg_color="#6B8E23", command=add).pack(pady=20)
+        ctk.CTkButton(v, text="Guardar", fg_color="#8B4513", hover_color="#A0522D", corner_radius=8, command=add).pack(pady=20)

@@ -19,8 +19,8 @@ class StatsTab:
         ctk.CTkLabel(f_top, text="REPORTES DE INGRESOS", font=("Inter", 22, "bold")).pack(side="left")
         
         # Botón para exportar Excel
-        ctk.CTkButton(f_top, text="📊 Exportar Excel (CSV)", fg_color="#5C4033", 
-                      command=self.exportar_estadisticas_excel).pack(side="right", padx=10)
+        ctk.CTkButton(f_top, text="📊 Exportar Excel (CSV)", fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
+                      font=("Inter", 12, "bold"), command=self.exportar_estadisticas_excel).pack(side="right", padx=10)
         
         self.selector_periodo = ctk.CTkComboBox(f_top, values=["Semanal", "Mensual", "Anual"], 
                                                 command=lambda _: self.actualizar_grafico())

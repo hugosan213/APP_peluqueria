@@ -15,7 +15,8 @@ class ConfigTab:
         self.en_ape = ctk.CTkEntry(container, placeholder_text="Apellido", width=400); self.en_ape.pack(pady=5)
         self.en_dni = ctk.CTkEntry(container, placeholder_text="DNI", width=400); self.en_dni.pack(pady=5)
         self.en_mai = ctk.CTkEntry(container, placeholder_text="Email", width=400); self.en_mai.pack(pady=5)
-        ctk.CTkButton(container, text="Registrar Peluquero/a", fg_color="#5C4033", command=self.guardar_empleado).pack(pady=20)
+        ctk.CTkButton(container, text="Registrar Peluquero/a", fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
+                      font=("Inter", 12, "bold"), command=self.guardar_empleado).pack(pady=20)
 
     def guardar_empleado(self):
         db = Database()

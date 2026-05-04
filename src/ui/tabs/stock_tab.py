@@ -17,8 +17,8 @@ class StockTab:
         
         # Seguridad: Solo admin crea productos[cite: 13, 15]
         if self.parent.usuario_actual['rol'] == 'admin':
-            ctk.CTkButton(f_top, text="+ Nuevo Producto", fg_color="#6B8E23", 
-                          command=self.abrir_formulario_producto).pack(side="right")
+            ctk.CTkButton(f_top, text="+ Nuevo Producto", fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
+                          font=("Inter", 12, "bold"), command=self.abrir_formulario_producto).pack(side="right")
             
         self.frame_lista_stock = ctk.CTkScrollableFrame(self.master, fg_color="transparent")
         self.frame_lista_stock.pack(fill="both", expand=True, padx=30)
@@ -60,4 +60,5 @@ class StockTab:
                 v.destroy()
                 self.cargar_lista_stock()
 
-        ctk.CTkButton(v, text="Guardar", fg_color="#6B8E23", command=add).pack(pady=30)
+        ctk.CTkButton(v, text="Guardar", fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
+                      font=("Inter", 12, "bold"), command=add).pack(pady=30)

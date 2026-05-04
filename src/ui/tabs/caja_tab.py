@@ -18,8 +18,8 @@ class CajaTab:
         f_top.pack(pady=20, fill="x", padx=50)
         
         ctk.CTkLabel(f_top, text="CONTROL DE CAJA DIARIA", font=("Inter", 22, "bold")).pack(side="left")
-        ctk.CTkButton(f_top, text="- Retirar Dinero / Gasto", fg_color="#CD5C5C", 
-                      command=self.abrir_formulario_egreso).pack(side="right")
+        ctk.CTkButton(f_top, text="- Retirar Dinero / Gasto", fg_color="#CD5C5C", hover_color="#A52A2A", corner_radius=10,
+                      font=("Inter", 12, "bold"), command=self.abrir_formulario_egreso).pack(side="right")
         
         self.frame_caja_info = ctk.CTkFrame(self.master, fg_color="#F2F0EB", corner_radius=15)
         self.frame_caja_info.pack(pady=10, padx=50, fill="both", expand=True)
@@ -80,7 +80,7 @@ class CajaTab:
                     v.destroy()
                     self.cargar_caja_diaria()
             
-            ctk.CTkButton(v, text="Confirmar Gasto", fg_color="#CD5C5C", command=guardar).pack(pady=30)
+            ctk.CTkButton(v, text="Confirmar Gasto", fg_color="#CD5C5C", hover_color="#A52A2A", corner_radius=8, command=guardar).pack(pady=30)
             
         elif password_ingresada is not None:
             messagebox.showerror("Error", "Contraseña incorrecta. Operación cancelada.")
