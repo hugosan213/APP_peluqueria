@@ -77,15 +77,42 @@ class MainWindow(ctk.CTk):
 
             
     def cargar_datos(self):
-        for widget in self.frame_agenda.winfo_children(): widget.destroy()
+        # 1. Limpiamos el frame por completo para evitar tarjetas duplicadas
+        for widget in self.frame_agenda.winfo_children(): 
+            widget.destroy()
+            
         db = Database()
-        for t in db.obtener_agenda():
+        # 2. Obtenemos los datos de la vista_agenda_completa[cite: 9, 14]
+        agenda = db.obtener_agenda()
+        
+        for t in agenda:
             card = ctk.CTkFrame(self.frame_agenda, fg_color="#FFFFFF", border_width=1, border_color="#E5E1DA", corner_radius=12)
             card.pack(fill="x", pady=6, padx=10)
-            ctk.CTkLabel(card, text=f"🕒 {t['Fecha_Hora']} | 👤 {t['Cliente']}", font=("Inter", 14, "bold")).pack(side="left", padx=20, pady=15)
+            
+            # --- LÓGICA DE RESCATE DE NOMBRE (MÁS ROBUSTA) ---
+            # Intentamos obtener 'Cliente' tal cual lo entrega la vista SQL (con C mayúscula)
+            nombre_cliente = t.get('Cliente')
+            
+            # Si la vista falla o devuelve vacío, intentamos reconstruirlo manualmente
+            if not nombre_cliente or str(nombre_cliente).strip() in ["", "None", "NULL"]:
+                # Buscamos en las columnas individuales por si las moscas
+                n = t.get('nombre', t.get('Nombre', ''))
+                a = t.get('apellido', t.get('Apellido', ''))
+                nombre_cliente = f"{n} {a}".strip() if (n or a) else "Cliente sin nombre"
+            
+            # 3. Dibujamos la etiqueta con el nombre final recuperado
+            ctk.CTkLabel(card, text=f"🕒 {t['Fecha_Hora']} | 👤 {nombre_cliente}", 
+                         font=("Inter", 14, "bold")).pack(side="left", padx=20, pady=15)
+
+            # Botones de acción y detalles del servicio
             if t.get('Estado') != 'finalizada':
-                ctk.CTkButton(card, text="💵 Cobrar", width=80, fg_color="#6B8E23", command=lambda trn=t: self.abrir_ventana_cobro(trn)).pack(side="right", padx=10)
+                ctk.CTkButton(card, text="💵 Cobrar", width=80, fg_color="#6B8E23", 
+                              command=lambda trn=t: self.abrir_ventana_cobro(trn)).pack(side="right", padx=10)
+            
             ctk.CTkLabel(card, text=f"✂️ {t['Servicio']}", text_color="#5C4033").pack(side="right", padx=20)
+        
+        # Forzamos la actualización de la interfaz visual
+        self.update_idletasks()
 
     # --- MÓDULO DE CAJA ---[cite: 7]
     def setup_tab_caja(self):

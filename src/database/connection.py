@@ -137,15 +137,45 @@ class Database:
         if conexion:
             cursor = conexion.cursor(dictionary=True)
             try:
-                cursor.execute("SELECT c.idcliente FROM cliente c JOIN persona p ON c.persona_idpersona = p.idpersona WHERE p.mail = %s", (mail,))
+                # 1. Lógica de búsqueda inteligente
+                # Si el mail no es opcional o no está vacío, buscamos por mail
+                if mail and str(mail).strip() != "" and mail != "temp@mail.com":
+                    sql_busqueda = """SELECT c.idcliente FROM cliente c 
+                                      JOIN persona p ON c.persona_idpersona = p.idpersona 
+                                      WHERE p.mail = %s"""
+                    cursor.execute(sql_busqueda, (mail,))
+                else:
+                    # Si el mail está vacío, buscamos por nombre y apellido para no duplicar
+                    sql_busqueda = """SELECT c.idcliente FROM cliente c 
+                                      JOIN persona p ON c.persona_idpersona = p.idpersona 
+                                      WHERE p.nombre = %s AND p.apellido = %s"""
+                    cursor.execute(sql_busqueda, (nombre, apellido))
+                
                 resultado = cursor.fetchone()
-                if resultado: return resultado['idcliente']
-                cursor.execute("INSERT INTO persona (nombre, apellido, mail) VALUES (%s, %s, %s)", (nombre, apellido, mail))
+                if resultado: 
+                    return resultado['idcliente']
+
+                # 2. Si no existe, creamos la PERSONA primero
+                # Guardamos el mail como NULL si está vacío para que no rompa la vista SQL
+                mail_final = mail if (mail and str(mail).strip() != "") else None
+                
+                sql_p = "INSERT INTO persona (nombre, apellido, mail) VALUES (%s, %s, %s)"
+                cursor.execute(sql_p, (nombre, apellido, mail_final))
                 id_p = cursor.lastrowid
-                cursor.execute("INSERT INTO cliente (persona_idpersona) VALUES (%s)", (id_p,))
-                conexion.commit()
-                return cursor.lastrowid
-            finally: cursor.close(); conexion.close()
+                conexion.commit() 
+
+                # 3. Creamos el CLIENTE vinculado a esa persona
+                sql_c = "INSERT INTO cliente (persona_idpersona) VALUES (%s)"
+                cursor.execute(sql_c, (id_p,))
+                id_c = cursor.lastrowid
+                conexion.commit() 
+                
+                return id_c
+            except Exception as e:
+                print(f"Error al procesar cliente: {e}")
+                return None
+            finally: 
+                cursor.close(); conexion.close()
         return None
 
     def obtener_clientes_lista(self):
