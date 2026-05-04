@@ -11,11 +11,6 @@ class MainWindow(ctk.CTk):
         ctk.set_appearance_mode("Light") 
         self.configure(fg_color="#FAF9F6")
 
-        # Botón de Cerrar Sesión ubicado arriba a la derecha
-        self.btn_logout = ctk.CTkButton(self, text="Cerrar Sesión 🔓", 
-                                        fg_color="#CD5C5C", hover_color="#A52A2A",
-                                        width=120, height=30, command=self.cerrar_sesion)
-        self.btn_logout.place(relx=0.98, rely=0.02, anchor="ne")
 
         self.tabview = ctk.CTkTabview(self, segmented_button_fg_color="#F2F0EB", 
                                       segmented_button_selected_color="#D2B48C", 
@@ -45,6 +40,12 @@ class MainWindow(ctk.CTk):
             self.setup_tab_gestion()
             self.setup_tab_stats()
             
+        # Este bloque debe ir al final para que quede por encima del Tabview[cite: 14]
+        self.btn_logout = ctk.CTkButton(self, text="Cerrar Sesión 🔓", 
+                                        fg_color="#CD5C5C", hover_color="#A52A2A",
+                                        width=120, height=30, command=self.cerrar_sesion)
+        self.btn_logout.place(relx=0.98, rely=0.02, anchor="ne")
+        
         self.cargar_datos()
 
     # --- MÓDULO DE AGENDA ---[cite: 7]
@@ -548,20 +549,24 @@ class MainWindow(ctk.CTk):
     def cerrar_sesion(self):
         from tkinter import messagebox
         if messagebox.askyesno("Cerrar Sesión", "¿Estás seguro que querés salir?"):
-            # Detenemos el loop y destruimos la ventana actual[cite: 13]
+            # 1. Obtenemos la referencia a la ventana de login antes de destruir esta
+            from ui.login import LoginWindow
+            
+            # 2. Cerramos la ventana principal y detenemos su loop
             self.quit()
             self.destroy()
             
-            # Re-lanzamos el flujo de login[cite: 14]
-            from ui.login import LoginWindow
+            # 3. Lanzamos el login como una tarea nueva para evitar el KeyboardInterrupt
+            def reiniciar():
+                def relog(usuario):
+                    from ui.main_window import MainWindow
+                    app = MainWindow(usuario)
+                    app.mainloop()
+                
+                nuevo_login = LoginWindow(on_login_success=relog)
+                nuevo_login.mainloop()
             
-            def relog(usuario):
-                from ui.main_window import MainWindow
-                app = MainWindow(usuario)
-                app.mainloop()
-
-            login = LoginWindow(on_login_success=relog)
-            login.mainloop()
+            reiniciar()
 
     def exportar_estadisticas_excel(self):
         from tkinter import filedialog
