@@ -430,15 +430,45 @@ class MainWindow(ctk.CTk):
                      font=("Inter", 26, "bold"), text_color="#2D2424").pack(pady=20)
 
     def abrir_formulario_egreso(self):
-        v = ctk.CTkToplevel(self); v.geometry("350x400"); v.attributes("-topmost", True)
-        ctk.CTkLabel(v, text="SALIDA DE DINERO", font=("Inter", 16, "bold")).pack(pady=20)
-        em = ctk.CTkEntry(v, placeholder_text="Monto", width=250); em.pack(pady=10)
-        ed = ctk.CTkEntry(v, placeholder_text="Descripción", width=250); ed.pack(pady=10)
-        
-        def guardar():
-            if Database().registrar_egreso(em.get(), ed.get()):
-                v.destroy(); self.cargar_caja_diaria()
-        ctk.CTkButton(v, text="Confirmar Gasto", fg_color="#CD5C5C", command=guardar).pack(pady=30)
+        # 1. Pedimos la contraseña antes de abrir cualquier ventana
+        dialogo = ctk.CTkInputDialog(text="Ingrese su contraseña para autorizar el retiro:", title="Seguridad de Caja")
+        # El método get_input() detiene la ejecución hasta que el usuario responde[cite: 7]
+        password_ingresada = dialogo.get_input()
+
+        # 2. Verificamos la contraseña ingresada contra la del usuario logueado[cite: 8, 10]
+        # Usamos self.usuario_actual['password'] porque ese dato ya lo traemos desde la DB[cite: 8]
+        if password_ingresada == self.usuario_actual.get('password'):
+            v = ctk.CTkToplevel(self)
+            v.geometry("350x400")
+            v.attributes("-topmost", True)
+            v.title("Nuevo Egreso")
+            
+            ctk.CTkLabel(v, text="SALIDA DE DINERO", font=("Inter", 16, "bold")).pack(pady=20)
+            
+            em = ctk.CTkEntry(v, placeholder_text="Monto", width=250)
+            em.pack(pady=10)
+            
+            ed = ctk.CTkEntry(v, placeholder_text="Descripción", width=250)
+            ed.pack(pady=10)
+            
+            def guardar():
+                monto = em.get()
+                desc = ed.get()
+                if not monto or not desc:
+                    from tkinter import messagebox
+                    messagebox.showwarning("Atención", "Complete todos los campos.")
+                    return
+                
+                if Database().registrar_egreso(monto, desc):
+                    v.destroy()
+                    self.cargar_caja_diaria() # Refrescamos los totales en la pestaña[cite: 7]
+            
+            ctk.CTkButton(v, text="Confirmar Gasto", fg_color="#CD5C5C", command=guardar).pack(pady=30)
+            
+        elif password_ingresada is not None:
+            # Si la contraseña es incorrecta y no se presionó "Cancelar"[cite: 7]
+            from tkinter import messagebox
+            messagebox.showerror("Error", "Contraseña incorrecta. Operación cancelada.")
 
     def setup_tab_stats(self):
         # Título y Botón de Exportar

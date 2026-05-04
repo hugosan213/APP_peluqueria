@@ -305,14 +305,14 @@ class Database:
         if conexion:
             cursor = conexion.cursor(dictionary=True)
             try:
-                # Consultamos directamente en la tabla usuario
-                # que contiene el nombre_usuario, password y el enum del rol
-                sql = """SELECT idusuario, nombre_usuario, rol 
+                # Agregamos 'password' a la consulta para que el sistema
+                # pueda usarla después en validaciones de seguridad (como los retiros)
+                sql = """SELECT idusuario, nombre_usuario, rol, password 
                          FROM usuario 
                          WHERE nombre_usuario = %s AND password = %s"""
                 
                 cursor.execute(sql, (usuario, password))
-                return cursor.fetchone()
+                return cursor.fetchone() # Ahora devuelve un diccionario con la contraseña incluida[cite: 10]
             except Exception as e:
                 print(f"Error en validación: {e}")
                 return None
