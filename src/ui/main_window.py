@@ -599,35 +599,42 @@ class MainWindow(ctk.CTk):
             reiniciar()
 
     def exportar_estadisticas_excel(self):
-        from tkinter import filedialog
-        import csv
+        from tkinter import filedialog, messagebox
+        import pandas as pd
         
         db = Database()
-        # Traemos los datos detallados de ventas
         datos = db.obtener_pagos_para_exportar()
         
         if not datos:
-            from tkinter import messagebox
             messagebox.showinfo("Exportar", "No hay datos de ventas para exportar.")
             return
             
-        # Abrimos el cuadro de diálogo para guardar el archivo
         path = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=[("Archivo CSV", "*.csv")],
-            initialfile=f"Reporte_Ventas_{datetime.now().strftime('%d_%m_%Y')}.csv"
+            defaultextension=".xlsx",
+            filetypes=[("Excel Workbook", "*.xlsx")],
+            initialfile=f"Reporte_Ventas_{datetime.now().strftime('%d_%m_%Y')}.xlsx"
         )
         
         if path:
             try:
-                with open(path, mode='w', newline='', encoding='utf-8') as file:
-                    # Usamos los nombres de las columnas de la base de datos como cabecera[cite: 17]
-                    writer = csv.DictWriter(file, fieldnames=datos[0].keys())
-                    writer.writeheader()
-                    writer.writerows(datos)
+                # 1. Creamos el DataFrame
+                df = pd.DataFrame(datos)
+                df.columns = ['ID Pago', 'Fecha y Hora', 'Monto ($)', 'Método de Pago', 'Servicio']
                 
-                from tkinter import messagebox
-                messagebox.showinfo("Éxito", f"Reporte exportado correctamente en:\n{path}")
+                # 2. Usamos un "ExcelWriter" para poder aplicar formatos
+                with pd.ExcelWriter(path, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False, sheet_name='Ventas')
+                    
+                    # 3. Auto-ajuste de columnas automático
+                    worksheet = writer.sheets['Ventas']
+                    for idx, col in enumerate(df.columns):
+                        # Encontramos el largo máximo del contenido en esa columna
+                        max_len = max(
+                            df[col].astype(str).map(len).max(),
+                            len(col)
+                        ) + 2 # Margen extra
+                        worksheet.column_dimensions[chr(65 + idx)].width = max_len
+                
+                messagebox.showinfo("Éxito", f"Reporte profesional generado en:\n{path}")
             except Exception as e:
-                from tkinter import messagebox
-                messagebox.showerror("Error", f"No se pudo exportar el archivo: {e}")
+                messagebox.showerror("Error", f"No se pudo generar el Excel: {e}")
