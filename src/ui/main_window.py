@@ -3,33 +3,48 @@ from database.connection import Database
 from datetime import datetime
 
 class MainWindow(ctk.CTk):
-    def __init__(self):
+    def __init__(self, usuario):
         super().__init__()
+        self.usuario_actual = usuario  # Recibimos el objeto con idusuario, nombre_usuario y rol[cite: 8, 13]
         self.title("Peluquería - Gestión Integral")
         self.geometry("1100x850")
         ctk.set_appearance_mode("Light") 
         self.configure(fg_color="#FAF9F6")
+
+        # Botón de Cerrar Sesión ubicado arriba a la derecha
+        self.btn_logout = ctk.CTkButton(self, text="Cerrar Sesión 🔓", 
+                                        fg_color="#CD5C5C", hover_color="#A52A2A",
+                                        width=120, height=30, command=self.cerrar_sesion)
+        self.btn_logout.place(relx=0.98, rely=0.02, anchor="ne")
 
         self.tabview = ctk.CTkTabview(self, segmented_button_fg_color="#F2F0EB", 
                                       segmented_button_selected_color="#D2B48C", 
                                       text_color="black")
         self.tabview.pack(pady=10, padx=10, fill="both", expand=True)
 
+        # 1. DEFINICIÓN DE PESTAÑAS SEGÚN ROL[cite: 8, 13]
         self.tab_agenda = self.tabview.add("📅 Agenda")
         self.tab_clientes = self.tabview.add("👥 Clientes")
         self.tab_servicios = self.tabview.add("✂️ Precios")
-        self.tab_caja = self.tabview.add("💰 Caja")
         self.tab_stock = self.tabview.add("📦 Stock")
-        self.tab_gestion = self.tabview.add("⚙️ Config.")
-        self.tab_stats = self.tabview.add("📊 Estadísticas")
 
-        self.setup_tab_stats()
+        # Solo el administrador ve estas pestañas[cite: 8, 13]
+        if self.usuario_actual['rol'] == 'admin':
+            self.tab_caja = self.tabview.add("💰 Caja")
+            self.tab_gestion = self.tabview.add("⚙️ Config.")
+            self.tab_stats = self.tabview.add("📊 Estadísticas")
+
+        # 2. INICIALIZACIÓN DE MÓDULOS
         self.setup_tab_agenda()
         self.setup_tab_clientes()
         self.setup_tab_servicios()
-        self.setup_tab_caja()
         self.setup_tab_stock()
-        self.setup_tab_gestion()
+
+        if self.usuario_actual['rol'] == 'admin':
+            self.setup_tab_caja()
+            self.setup_tab_gestion()
+            self.setup_tab_stats()
+            
         self.cargar_datos()
 
     # --- MÓDULO DE AGENDA ---[cite: 7]
@@ -425,22 +440,25 @@ class MainWindow(ctk.CTk):
         ctk.CTkButton(v, text="Confirmar Gasto", fg_color="#CD5C5C", command=guardar).pack(pady=30)
 
     def setup_tab_stats(self):
-        # Título y Selector de Período
+        # Título y Botón de Exportar
         f_top = ctk.CTkFrame(self.tab_stats, fg_color="transparent")
         f_top.pack(pady=20, fill="x", padx=50)
         
         ctk.CTkLabel(f_top, text="REPORTES DE INGRESOS", font=("Inter", 22, "bold")).pack(side="left")
+        
+        # Botón para imprimir el Excel/CSV
+        ctk.CTkButton(f_top, text="📊 Exportar Excel (CSV)", fg_color="#5C4033", 
+                      command=self.exportar_estadisticas_excel).pack(side="right", padx=10)
         
         self.selector_periodo = ctk.CTkComboBox(f_top, values=["Semanal", "Mensual", "Anual"], 
                                                 command=lambda _: self.actualizar_grafico())
         self.selector_periodo.set("Mensual")
         self.selector_periodo.pack(side="right")
 
-        # Contenedor para los resultados
+        # Contenedor para los resultados visuales
         self.frame_grafico = ctk.CTkFrame(self.tab_stats, fg_color="#F2F0EB", corner_radius=15)
         self.frame_grafico.pack(pady=10, padx=50, fill="both", expand=True)
         self.actualizar_grafico()
-
     def actualizar_grafico(self):
         for widget in self.frame_grafico.winfo_children(): widget.destroy()
         
@@ -465,3 +483,116 @@ class MainWindow(ctk.CTk):
             ctk.CTkFrame(row, width=ancho_barra, height=20, fg_color="#D2B48C", corner_radius=5).pack(side="left", padx=10)
             
             ctk.CTkLabel(row, text=f"$ {d['total']}", font=("Inter", 12, "bold")).pack(side="left")
+
+    
+    
+    def setup_tab_servicios(self):
+        f_top = ctk.CTkFrame(self.tab_servicios, fg_color="transparent")
+        f_top.pack(pady=10, fill="x", padx=30)
+        ctk.CTkLabel(f_top, text="GESTIÓN DE TARIFAS", font=("Inter", 20, "bold"), text_color="#5C4033").pack(side="left")
+        
+        # Seguridad: Solo el admin puede agregar servicios nuevos[cite: 13]
+        if self.usuario_actual['rol'] == 'admin':
+            ctk.CTkButton(f_top, text="+ Nuevo Servicio", fg_color="#6B8E23", command=self.abrir_formulario_servicio).pack(side="right")
+        
+        self.frame_lista_precios = ctk.CTkScrollableFrame(self.tab_servicios, fg_color="transparent")
+        self.frame_lista_precios.pack(fill="both", expand=True, padx=30)
+        self.cargar_servicios_edicion()
+
+    def cargar_servicios_edicion(self):
+        for widget in self.frame_lista_precios.winfo_children(): 
+            widget.destroy()
+            
+        db = Database()
+        es_admin = self.usuario_actual['rol'] == 'admin'
+
+        for s in db.obtener_servicios_detallados():
+            row = ctk.CTkFrame(self.frame_lista_precios, fg_color="#FFFFFF", border_width=1, border_color="#E5E1DA", corner_radius=10)
+            row.pack(fill="x", pady=4, padx=5)
+            
+            ctk.CTkLabel(row, text=s['nombre'].upper(), width=200, anchor="w", font=("Inter", 12, "bold")).pack(side="left", padx=20, pady=10)
+            
+            ctk.CTkLabel(row, text="$").pack(side="left")
+            e_p = ctk.CTkEntry(row, width=80)
+            e_p.insert(0, str(s['precio']))
+            # Si es empleado, solo lectura[cite: 13]
+            if not es_admin: e_p.configure(state="disabled")
+            e_p.pack(side="left", padx=5)
+            
+            ctk.CTkLabel(row, text="Min:").pack(side="left", padx=(10,0))
+            e_d = ctk.CTkEntry(row, width=60)
+            e_d.insert(0, str(s['duracion']))
+            if not es_admin: e_d.configure(state="disabled")
+            e_d.pack(side="left", padx=5)
+            
+            # Botones de acción: Visibles solo para el administrador[cite: 13]
+            if es_admin:
+                ctk.CTkButton(row, text="💾", width=40, fg_color="#6B8E23", 
+                              command=lambda i=s['idservicio'], p=e_p, d=e_d: self.guardar_cambio_servicio(i, p.get(), d.get())).pack(side="right", padx=5)
+                ctk.CTkButton(row, text="🗑️", width=40, fg_color="#CD5C5C", 
+                              command=lambda i=s['idservicio']: self.borrar_servicio(i)).pack(side="right", padx=5)
+
+    def setup_tab_stock(self):
+            f_top = ctk.CTkFrame(self.tab_stock, fg_color="transparent")
+            f_top.pack(pady=10, fill="x", padx=30)
+            ctk.CTkLabel(f_top, text="CONTROL DE INSUMOS", font=("Inter", 20, "bold")).pack(side="left")
+            
+            # BLOQUEO SEGURIDAD: Solo admin crea productos[cite: 4]
+            if self.usuario_actual['rol'] == 'admin':
+                ctk.CTkButton(f_top, text="+ Nuevo Producto", fg_color="#6B8E23", command=self.abrir_formulario_producto).pack(side="right")
+                
+            self.frame_lista_stock = ctk.CTkScrollableFrame(self.tab_stock, fg_color="transparent")
+            self.frame_lista_stock.pack(fill="both", expand=True, padx=30)
+            self.cargar_lista_stock()
+
+    def cerrar_sesion(self):
+        from tkinter import messagebox
+        if messagebox.askyesno("Cerrar Sesión", "¿Estás seguro que querés salir?"):
+            # Detenemos el loop y destruimos la ventana actual[cite: 13]
+            self.quit()
+            self.destroy()
+            
+            # Re-lanzamos el flujo de login[cite: 14]
+            from ui.login import LoginWindow
+            
+            def relog(usuario):
+                from ui.main_window import MainWindow
+                app = MainWindow(usuario)
+                app.mainloop()
+
+            login = LoginWindow(on_login_success=relog)
+            login.mainloop()
+
+    def exportar_estadisticas_excel(self):
+        from tkinter import filedialog
+        import csv
+        
+        db = Database()
+        # Traemos los datos detallados de ventas
+        datos = db.obtener_pagos_para_exportar()
+        
+        if not datos:
+            from tkinter import messagebox
+            messagebox.showinfo("Exportar", "No hay datos de ventas para exportar.")
+            return
+            
+        # Abrimos el cuadro de diálogo para guardar el archivo
+        path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("Archivo CSV", "*.csv")],
+            initialfile=f"Reporte_Ventas_{datetime.now().strftime('%d_%m_%Y')}.csv"
+        )
+        
+        if path:
+            try:
+                with open(path, mode='w', newline='', encoding='utf-8') as file:
+                    # Usamos los nombres de las columnas de la base de datos como cabecera[cite: 17]
+                    writer = csv.DictWriter(file, fieldnames=datos[0].keys())
+                    writer.writeheader()
+                    writer.writerows(datos)
+                
+                from tkinter import messagebox
+                messagebox.showinfo("Éxito", f"Reporte exportado correctamente en:\n{path}")
+            except Exception as e:
+                from tkinter import messagebox
+                messagebox.showerror("Error", f"No se pudo exportar el archivo: {e}")

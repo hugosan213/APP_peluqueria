@@ -299,3 +299,41 @@ class Database:
             cursor.close(); conexion.close()
             return res
         return []
+
+    def validar_usuario(self, usuario, password):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            try:
+                # Consultamos directamente en la tabla usuario
+                # que contiene el nombre_usuario, password y el enum del rol
+                sql = """SELECT idusuario, nombre_usuario, rol 
+                         FROM usuario 
+                         WHERE nombre_usuario = %s AND password = %s"""
+                
+                cursor.execute(sql, (usuario, password))
+                return cursor.fetchone()
+            except Exception as e:
+                print(f"Error en validación: {e}")
+                return None
+            finally:
+                cursor.close(); conexion.close()
+        return None
+        
+    def obtener_pagos_para_exportar(self):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            try:
+                # Traemos el detalle de todos los cobros realizados
+                sql = """SELECT p.idpago, p.fecha, p.monto, mp.tipoPago, s.nombre as servicio
+                         FROM pago p
+                         JOIN metodo_pago mp ON p.metodo_pago_idmetodopago = mp.idmetodopago
+                         JOIN reserva r ON p.reserva_idreserva = r.idreserva
+                         JOIN servicio s ON r.servicio_idservicio = s.idservicio
+                         ORDER BY p.fecha DESC"""
+                cursor.execute(sql)
+                return cursor.fetchall()
+            finally:
+                cursor.close(); conexion.close()
+        return []
