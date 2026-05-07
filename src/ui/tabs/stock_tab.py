@@ -9,36 +9,44 @@ class StockTab:
         self.setup_ui()
 
     def setup_ui(self):
-        """Estructura de control de insumos[cite: 7]"""
-        f_top = ctk.CTkFrame(self.master, fg_color="transparent")
-        f_top.pack(pady=10, fill="x", padx=30)
+        """Estructura de control de insumos."""
+        wrapper = ctk.CTkFrame(self.master, fg_color="transparent")
+        wrapper.pack(fill="both", expand=True, padx=30, pady=20)
         
-        ctk.CTkLabel(f_top, text="CONTROL DE INSUMOS", font=("Inter", 20, "bold")).pack(side="left")
+        header = ctk.CTkFrame(wrapper, fg_color="transparent")
+        header.pack(fill="x", pady=(0, 15))
         
-        # Seguridad: Solo admin crea productos[cite: 13, 15]
+        ctk.CTkLabel(header, text="CONTROL DE INSUMOS", font=("Inter", 22, "bold"), text_color="#5C4033").pack(side="left")
+        
         if self.parent.usuario_actual['rol'] == 'admin':
-            ctk.CTkButton(f_top, text="+ Nuevo Producto", fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
+            ctk.CTkButton(header, text="+ Nuevo Producto", fg_color="#8B4513", hover_color="#A0522D", corner_radius=12,
                           font=("Inter", 12, "bold"), command=self.abrir_formulario_producto).pack(side="right")
             
-        self.frame_lista_stock = ctk.CTkScrollableFrame(self.master, fg_color="transparent")
-        self.frame_lista_stock.pack(fill="both", expand=True, padx=30)
+        self.frame_lista_stock = ctk.CTkScrollableFrame(wrapper, fg_color="transparent", corner_radius=18, border_width=1, border_color="#E3D6C4")
+        self.frame_lista_stock.pack(fill="both", expand=True)
         self.cargar_lista_stock()
 
     def cargar_lista_stock(self):
-        """Refresca la lista de productos y marca en rojo los que tienen stock bajo[cite: 7]"""
+        """Refresca la lista de productos y marca en rojo los que tienen stock bajo."""
         for widget in self.frame_lista_stock.winfo_children(): 
             widget.destroy()
             
-        # Usamos la conexión self.db ya inicializada
-        for p in self.db.obtener_productos_stock():
+        productos = self.db.obtener_productos_stock()
+        if not productos:
+            ctk.CTkLabel(self.frame_lista_stock, text="No hay insumos cargados.", font=("Inter", 14), text_color="#5C4033").pack(pady=80)
+            return
+
+        for p in productos:
             es_bajo = p['stock_actual'] <= p['stock_minimo']
             row = ctk.CTkFrame(self.frame_lista_stock, 
-                               fg_color="#FFCDD2" if es_bajo else "#FFFFFF", 
-                               border_width=1, border_color="#E5E1DA", corner_radius=10)
-            row.pack(fill="x", pady=5, padx=5)
+                               fg_color="#FFEBE9" if es_bajo else "#FFFFFF", 
+                               border_width=1, border_color="#E5E1DA", corner_radius=15)
+            row.pack(fill="x", pady=8, padx=10)
             
-            ctk.CTkLabel(row, text=p['nombre'].upper(), font=("Inter", 13, "bold"), width=250, anchor="w").pack(side="left", padx=20, pady=10)
-            ctk.CTkLabel(row, text=f"Stock: {p['stock_actual']} {p['unidad']}").pack(side="left", padx=20)
+            info = ctk.CTkFrame(row, fg_color="transparent")
+            info.pack(fill="x", padx=18, pady=14)
+            ctk.CTkLabel(info, text=p['nombre'].upper(), font=("Inter", 13, "bold"), text_color="#5C4033", anchor="w").pack(side="left")
+            ctk.CTkLabel(info, text=f"Stock: {p['stock_actual']} {p['unidad']}", font=("Inter", 12), text_color="#5C4033").pack(side="right")
 
     def abrir_formulario_producto(self):
         """Ventana para agregar un nuevo insumo[cite: 7]"""

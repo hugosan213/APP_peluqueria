@@ -10,43 +10,52 @@ class CajaTab:
         self.setup_ui()
 
     def setup_ui(self):
-        """Define la estructura de la caja diaria[cite: 7]"""
+        """Define la estructura de la caja diaria."""
         for widget in self.master.winfo_children(): 
             widget.destroy()
         
-        f_top = ctk.CTkFrame(self.master, fg_color="transparent")
-        f_top.pack(pady=20, fill="x", padx=50)
+        wrapper = ctk.CTkFrame(self.master, fg_color="transparent")
+        wrapper.pack(fill="both", expand=True, padx=30, pady=20)
         
-        ctk.CTkLabel(f_top, text="CONTROL DE CAJA DIARIA", font=("Inter", 22, "bold")).pack(side="left")
-        ctk.CTkButton(f_top, text="- Retirar Dinero / Gasto", fg_color="#CD5C5C", hover_color="#A52A2A", corner_radius=10,
+        header = ctk.CTkFrame(wrapper, fg_color="transparent")
+        header.pack(fill="x", pady=(0, 15))
+        
+        ctk.CTkLabel(header, text="CONTROL DE CAJA DIARIA", font=("Inter", 22, "bold"), text_color="#5C4033").pack(side="left")
+        ctk.CTkButton(header, text="- Retirar Dinero / Gasto", fg_color="#CD5C5C", hover_color="#A52A2A", corner_radius=12,
                       font=("Inter", 12, "bold"), command=self.abrir_formulario_egreso).pack(side="right")
         
-        self.frame_caja_info = ctk.CTkFrame(self.master, fg_color="#F2F0EB", corner_radius=15)
-        self.frame_caja_info.pack(pady=10, padx=50, fill="both", expand=True)
+        self.frame_caja_info = ctk.CTkFrame(wrapper, fg_color="#F2F0EB", corner_radius=18, border_width=1, border_color="#E3D6C4")
+        self.frame_caja_info.pack(pady=10, fill="both", expand=True)
         self.cargar_caja_diaria()
 
     def cargar_caja_diaria(self):
-        """Refresca los ingresos y egresos del día[cite: 7]"""
+        """Refresca los ingresos y egresos del día."""
         for widget in self.frame_caja_info.winfo_children(): 
             widget.destroy()
             
         ingresos = self.db.obtener_caja_diaria()
         egresos_total = self.db.obtener_total_egresos_hoy()
         total_ingresos = sum(float(r['total']) for r in ingresos)
-        
-        ctk.CTkLabel(self.frame_caja_info, text="INGRESOS", font=("Inter", 14, "bold")).pack(pady=(10,5))
-        for r in ingresos:
-            card = ctk.CTkFrame(self.frame_caja_info, fg_color="#FFFFFF")
-            card.pack(fill="x", padx=40, pady=2)
-            ctk.CTkLabel(card, text=f"{r['tipoPago'].upper()}: $ {r['total']}").pack(pady=5)
 
-        ctk.CTkFrame(self.frame_caja_info, height=2, fg_color="#D2B48C").pack(fill="x", padx=30, pady=15)
-        ctk.CTkLabel(self.frame_caja_info, text=f"TOTAL EGRESOS: - $ {egresos_total}", 
-                     text_color="#CD5C5C", font=("Inter", 16, "bold")).pack()
+        ingresos_card = ctk.CTkFrame(self.frame_caja_info, fg_color="#FFFFFF", corner_radius=15, border_width=1, border_color="#E3D6C4")
+        ingresos_card.pack(fill="x", padx=30, pady=(20, 10))
+        ctk.CTkLabel(ingresos_card, text="INGRESOS", font=("Inter", 16, "bold"), text_color="#5C4033").pack(anchor="w", padx=20, pady=(16, 8))
 
+        if ingresos:
+            for r in ingresos:
+                row = ctk.CTkFrame(ingresos_card, fg_color="transparent")
+                row.pack(fill="x", padx=20, pady=6)
+                ctk.CTkLabel(row, text=r['tipoPago'].upper(), font=("Inter", 12, "bold"), anchor="w").pack(side="left")
+                ctk.CTkLabel(row, text=f"$ {float(r['total']):,.2f}", font=("Inter", 12), text_color="#5C4033").pack(side="right")
+        else:
+            ctk.CTkLabel(ingresos_card, text="No se registraron ingresos hoy.", font=("Inter", 12), text_color="#5C4033").pack(padx=20, pady=16)
+
+        totales_card = ctk.CTkFrame(self.frame_caja_info, fg_color="#FFFFFF", corner_radius=15, border_width=1, border_color="#E3D6C4")
+        totales_card.pack(fill="x", padx=30, pady=(0, 20))
+
+        ctk.CTkLabel(totales_card, text=f"TOTAL EGRESOS: - $ {float(egresos_total):,.2f}", text_color="#CD5C5C", font=("Inter", 16, "bold")).pack(anchor="w", padx=20, pady=(18, 8))
         saldo_neto = total_ingresos - float(egresos_total)
-        ctk.CTkLabel(self.frame_caja_info, text=f"SALDO EN CAJA: $ {saldo_neto}", 
-                     font=("Inter", 26, "bold"), text_color="#2D2424").pack(pady=20)
+        ctk.CTkLabel(totales_card, text=f"SALDO EN CAJA: $ {saldo_neto:,.2f}", font=("Inter", 24, "bold"), text_color="#2D2424").pack(anchor="w", padx=20, pady=(0, 18))
 
     def abrir_formulario_egreso(self):
         """Seguridad y formulario de retiro[cite: 7, 8]"""

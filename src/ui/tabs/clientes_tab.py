@@ -9,42 +9,73 @@ class ClientesTab:
         self.setup_ui()
 
     def setup_ui(self):
-        """Define la interfaz de búsqueda y la lista[cite: 7]"""
-        f_busqueda = ctk.CTkFrame(self.master, fg_color="transparent")
-        f_busqueda.pack(pady=10, fill="x", padx=20)
-        
-        self.ent_bus_cli = ctk.CTkEntry(f_busqueda, placeholder_text="Buscar cliente...", width=400)
-        self.ent_bus_cli.pack(side="left", padx=10)
-        
-        ctk.CTkButton(f_busqueda, text="🔍", width=50, fg_color="#C49E6F", hover_color="#E0C085", text_color="black", corner_radius=10,
-                      font=("Inter", 12, "bold"), command=self.cargar_lista_clientes).pack(side="left")
-        
-        self.frame_lista_clientes = ctk.CTkScrollableFrame(self.master, fg_color="transparent")
-        self.frame_lista_clientes.pack(fill="both", expand=True, padx=20)
-        
+        """Define la interfaz de búsqueda y la lista."""
+        wrapper = ctk.CTkFrame(self.master, fg_color="transparent")
+        wrapper.pack(fill="both", expand=True, padx=20, pady=20)
+
+        header = ctk.CTkFrame(wrapper, fg_color="transparent")
+        header.pack(fill="x", pady=(0, 15))
+
+        ctk.CTkLabel(header, text="CLIENTES", font=("Inter", 24, "bold"), text_color="#5C4033").pack(side="left")
+        self.lbl_resultados = ctk.CTkLabel(header, text="", font=("Inter", 12), text_color="#5C4033")
+        self.lbl_resultados.pack(side="right")
+
+        f_busqueda = ctk.CTkFrame(wrapper, fg_color="#F2F0EB", corner_radius=16, border_width=1, border_color="#E3D6C4")
+        f_busqueda.pack(fill="x", pady=(0, 20))
+
+        self.ent_bus_cli = ctk.CTkEntry(f_busqueda, placeholder_text="Buscar cliente por nombre o apellido...", width=420)
+        self.ent_bus_cli.pack(side="left", padx=(20, 10), pady=16)
+
+        ctk.CTkButton(f_busqueda, text="🔍 Buscar", width=120, fg_color="#8B4513", hover_color="#A0522D", text_color="white", corner_radius=12,
+                      font=("Inter", 12, "bold"), command=self.cargar_lista_clientes).pack(side="left", padx=(0, 20), pady=16)
+
+        self.frame_lista_clientes = ctk.CTkScrollableFrame(wrapper, fg_color="transparent", corner_radius=16, border_width=1, border_color="#E3D6C4")
+        self.frame_lista_clientes.pack(fill="both", expand=True)
+
         self.cargar_lista_clientes()
 
     def cargar_lista_clientes(self):
-        """Refresca la lista de clientes según la búsqueda[cite: 7]"""
-        for widget in self.frame_lista_clientes.winfo_children(): 
+        """Refresca la lista de clientes según la búsqueda."""
+        for widget in self.frame_lista_clientes.winfo_children():
             widget.destroy()
-            
-        busqueda = self.ent_bus_cli.get().lower()
-        clientes = self.db.obtener_clientes_lista()
 
+        busqueda = self.ent_bus_cli.get().strip().lower()
+        if self.parent.usuario_actual['rol'] == 'empleado':
+            id_empleado = self.parent.usuario_actual.get('idempleado')
+            clientes = self.db.obtener_clientes_por_empleado(id_empleado) if id_empleado else []
+        else:
+            clientes = self.db.obtener_clientes_lista()
+
+        clientes_filtrados = []
         for c in clientes:
-            nombre_completo = f"{c['apellido'] or ''}, {c['nombre'] or ''}"
-            
-            if busqueda and busqueda not in nombre_completo.lower(): 
+            nombre_completo = f"{c['apellido'] or ''}, {c['nombre'] or ''}".strip()
+            if busqueda and busqueda not in nombre_completo.lower():
                 continue
+            clientes_filtrados.append((c, nombre_completo))
 
-            row = ctk.CTkFrame(self.frame_lista_clientes, fg_color="#FFFFFF", border_width=1, border_color="#E5E1DA", corner_radius=10)
-            row.pack(fill="x", pady=3, padx=5)
-            
-            ctk.CTkLabel(row, text=nombre_completo.upper(), font=("Inter", 13, "bold"), width=250, anchor="w").pack(side="left", padx=20, pady=12)
-            
-            ctk.CTkButton(row, text="📋 Ver Notas", width=100, fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
-                          font=("Inter", 11, "bold"), command=lambda cli=c: self.abrir_notas_cliente(cli)).pack(side="right", padx=15)
+        self.lbl_resultados.configure(text=f"{len(clientes_filtrados)} clientes encontrados")
+
+        if not clientes_filtrados:
+            mensaje = "No se encontraron clientes." if busqueda else "No hay clientes registrados todavía."
+            ctk.CTkLabel(self.frame_lista_clientes, text=mensaje, font=("Inter", 14), text_color="#5C4033").pack(pady=80)
+            return
+
+        for cliente, nombre_completo in clientes_filtrados:
+            row = ctk.CTkFrame(self.frame_lista_clientes, fg_color="#FFFFFF", border_width=1, border_color="#E5E1DA", corner_radius=16)
+            row.pack(fill="x", pady=8, padx=10)
+
+            info = ctk.CTkFrame(row, fg_color="transparent")
+            info.pack(fill="x", padx=18, pady=14)
+
+            ctk.CTkLabel(info, text=nombre_completo.upper(), font=("Inter", 14, "bold"), text_color="#5C4033", anchor="w").pack(fill="x")
+            ctk.CTkLabel(info, text=f"Email: {cliente.get('mail', 'sin email')}" if cliente.get('mail') else "Email: sin email", 
+                          font=("Inter", 11), text_color="#5C4033", anchor="w").pack(fill="x", pady=(4, 0))
+
+            boton_frame = ctk.CTkFrame(row, fg_color="transparent")
+            boton_frame.pack(fill="x", padx=18, pady=(0, 14))
+
+            ctk.CTkButton(boton_frame, text="📋 Ver Notas", width=130, fg_color="#8B4513", hover_color="#A0522D", corner_radius=12,
+                          font=("Inter", 11, "bold"), command=lambda cli=cliente: self.abrir_notas_cliente(cli)).pack(side="right")
 
     def abrir_notas_cliente(self, cliente):
         """Abre la ventana de notas corrigiendo el error de referencia"""

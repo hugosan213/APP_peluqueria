@@ -19,39 +19,40 @@ class LoginWindow(ctk.CTk):
         self.setup_ui()
 
     def setup_ui(self):
-        # Logo o Título
-        ctk.CTkLabel(self, text="BIENVENIDO", font=("Inter", 28, "bold"), text_color="#5C4033").pack(pady=(60, 10))
-        ctk.CTkLabel(self, text="Gestión de Peluquería", font=("Inter", 14), text_color="#A67B5B").pack(pady=(0, 40))
+        container = ctk.CTkFrame(self, fg_color="#F2F0EB", corner_radius=20, border_width=1, border_color="#E3D6C4")
+        container.pack(pady=40, padx=30, fill="both", expand=True)
 
-        # Campo de Usuario
-        self.user_entry = ctk.CTkEntry(self, placeholder_text="Usuario (DNI)", width=280, height=45, corner_radius=10)
+        ctk.CTkLabel(container, text="BIENVENIDO", font=("Inter", 28, "bold"), text_color="#5C4033").pack(pady=(40, 10))
+        ctk.CTkLabel(container, text="Gestión de Peluquería", font=("Inter", 14), text_color="#A67B5B").pack(pady=(0, 15))
+        ctk.CTkLabel(container, text="Accede con tu usuario y contraseña para continuar.", font=("Inter", 12), text_color="#5C4033").pack(pady=(0, 30))
+
+        self.user_entry = ctk.CTkEntry(container, placeholder_text="Usuario ", width=320, height=45, corner_radius=12)
         self.user_entry.pack(pady=10)
 
-        # Campo de Contraseña
-        self.pass_entry = ctk.CTkEntry(self, placeholder_text="Contraseña", show="*", width=280, height=45, corner_radius=10)
+        self.pass_entry = ctk.CTkEntry(container, placeholder_text="Contraseña", show="*", width=320, height=45, corner_radius=12)
         self.pass_entry.pack(pady=10)
 
-        # Botón de Ingreso
-        self.btn_login = ctk.CTkButton(self, text="INICIAR SESIÓN", 
+        self.btn_login = ctk.CTkButton(container, text="INICIAR SESIÓN", 
                                         command=self.intentar_login,
-                                        width=280, height=52, corner_radius=10,
+                                        width=320, height=52, corner_radius=14,
                                         fg_color="#8B4513", hover_color="#A0522D",
                                         font=("Inter", 14, "bold"))
-        self.btn_login.pack(pady=40)
+        self.btn_login.pack(pady=30)
+
+        self.bind("<Return>", lambda event: self.intentar_login())
 
     def intentar_login(self):
+        # Desactivamos para evitar ruidos en el proceso
+        self.btn_login.configure(state="disabled")
+        
         usuario = self.user_entry.get()
         password = self.pass_entry.get()
-
-        if not usuario or not password:
-            messagebox.showwarning("Atención", "Por favor, complete todos los campos.")
-            return
 
         db = Database()
         datos_usuario = db.validar_usuario(usuario, password)
 
         if datos_usuario:
-            # SÓLO avisamos del éxito. NO destruimos aquí para evitar el TclError[cite: 5]
             self.on_login_success(datos_usuario) 
         else:
             messagebox.showerror("Error", "Usuario o contraseña incorrectos.")
+            self.btn_login.configure(state="normal")

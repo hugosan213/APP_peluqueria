@@ -1,32 +1,53 @@
-import customtkinter as ctk # Agregamos el import para configurar el tema global
+import customtkinter as ctk
 from ui.main_window import MainWindow
 from ui.login import LoginWindow
+import sys
 import os
 
 def inicio():
-    # 1. Limpieza estética de la consola (opcional)
+    # 1. Configuración inicial
     os.system('cls' if os.name == 'nt' else 'clear')
-    
-    # 2. Configuración Global de Apariencia
-    # Esto asegura que tanto el Login como la MainWindow nazcan en modo claro
     ctk.set_appearance_mode("Light") 
-    ctk.set_default_color_theme("blue") # El color de acento de los botones/bordes
+    ctk.set_default_color_theme("blue")
 
-    def mostrar_principal(usuario):
-        # 1. Ocultamos el login inmediatamente para evitar colisiones de hilos
-        login.withdraw() 
+    # Contenedor para persistir los datos entre ventanas
+    datos_finales = {"usuario": None}
+
+    def capturar_exito(usuario):
+        datos_finales["usuario"] = usuario
+        # Detenemos el bucle pero no destruimos todavía
+        login_v.quit()
+
+    # --- FASE 1: LOGIN ---
+    login_v = LoginWindow(on_login_success=capturar_exito)
+    
+    # Truco para Python 3.14: Forzar renderizado antes del loop
+    login_v.update() 
+    
+    # Iniciamos el bucle del login
+    login_v.mainloop()
+    
+    # Cuando salimos del mainloop (por login exitoso), matamos la ventana
+    try:
+        login_v.destroy()
+    except:
+        pass
+
+    # --- FASE 2: PRINCIPAL ---
+    # Solo si el usuario se logueó correctamente
+    if datos_finales["usuario"]:
+        # Recién ahora creamos la MainWindow
+        app = MainWindow(datos_finales["usuario"])
         
-        # 2. Creamos la ventana principal
-        app = MainWindow(usuario)
-        
-        # 3. Protocolo de cierre total: Limpia el login oculto al cerrar la app
-        app.protocol("WM_DELETE_WINDOW", lambda: (app.quit(), app.destroy(), login.destroy()))
-        
+        # Al cerrar la X de la principal, matamos todo el proceso
+        app.protocol("WM_DELETE_WINDOW", sys.exit)
         app.mainloop()
 
-    # 3. Lanzamiento del Login
-    login = LoginWindow(on_login_success=mostrar_principal)
-    login.mainloop()
-
 if __name__ == "__main__":
-    inicio()
+    try:
+        inicio()
+    except KeyboardInterrupt:
+        sys.exit(0)
+    except Exception:
+        import traceback
+        traceback.print_exc()

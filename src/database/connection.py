@@ -116,6 +116,54 @@ class Database:
             return res
         return []
 
+    def obtener_agenda_por_empleado(self, id_empleado):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            sql = """
+            SELECT r.idreserva, r.fecha_inicio as Fecha_Hora, r.estado as Estado,
+                   CONCAT(p.nombre, ' ', p.apellido) as Cliente,
+                   s.nombre as Servicio, s.precio as Precio_Sugerido,
+                   CONCAT(pe.nombre, ' ', pe.apellido) as Peluquero
+            FROM reserva r
+            JOIN cliente c ON r.cliente_idcliente = c.idcliente
+            JOIN persona p ON c.persona_idpersona = p.idpersona
+            JOIN servicio s ON r.servicio_idservicio = s.idservicio
+            JOIN empleado e ON r.empleado_idempleado = e.idempleado
+            JOIN persona pe ON e.persona_idpersona = pe.idpersona
+            WHERE r.estado = 'pendiente' AND r.empleado_idempleado = %s
+            ORDER BY r.fecha_inicio
+            """
+            cursor.execute(sql, (id_empleado,))
+            res = cursor.fetchall()
+            cursor.close(); conexion.close()
+            return res
+        return []
+
+    def obtener_historial_por_empleado(self, id_empleado):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            sql = """
+            SELECT r.fecha_inicio as Fecha_Hora, r.estado as Estado,
+                   CONCAT(p.nombre, ' ', p.apellido) as Cliente,
+                   s.nombre as Servicio,
+                   CONCAT(pe.nombre, ' ', pe.apellido) as Peluquero
+            FROM reserva r
+            JOIN cliente c ON r.cliente_idcliente = c.idcliente
+            JOIN persona p ON c.persona_idpersona = p.idpersona
+            JOIN servicio s ON r.servicio_idservicio = s.idservicio
+            JOIN empleado e ON r.empleado_idempleado = e.idempleado
+            JOIN persona pe ON e.persona_idpersona = pe.idpersona
+            WHERE r.estado = 'finalizada' AND r.empleado_idempleado = %s
+            ORDER BY r.fecha_inicio DESC LIMIT 50
+            """
+            cursor.execute(sql, (id_empleado,))
+            res = cursor.fetchall()
+            cursor.close(); conexion.close()
+            return res
+        return []
+
     # Lógica de registro implementada[cite: 10]
     def registrar_reserva(self, id_cliente, id_empleado, id_servicio, fecha_sql):
         conexion = self.conectar()
@@ -183,10 +231,74 @@ class Database:
         if conexion:
             cursor = conexion.cursor(dictionary=True)
             cursor.execute("SELECT c.idcliente, p.nombre, p.apellido, p.mail, c.notas_relevantes FROM cliente c JOIN persona p ON c.persona_idpersona = p.idpersona ORDER BY p.apellido ASC")
-            res = res = cursor.fetchall()
+            res = cursor.fetchall()
             cursor.close(); conexion.close()
             return res
         return []
+
+    def obtener_clientes_por_empleado(self, id_empleado):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            sql = """
+            SELECT DISTINCT c.idcliente, p.nombre, p.apellido, p.mail, c.notas_relevantes
+            FROM cliente c
+            JOIN persona p ON c.persona_idpersona = p.idpersona
+            JOIN reserva r ON r.cliente_idcliente = c.idcliente
+            WHERE r.empleado_idempleado = %s
+            ORDER BY p.apellido ASC, p.nombre ASC
+            """
+            cursor.execute(sql, (id_empleado,))
+            res = cursor.fetchall()
+            cursor.close(); conexion.close()
+            return res
+        return []
+
+    def usuario_existe(self, nombre_usuario):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            cursor.execute("SELECT idusuario FROM usuario WHERE nombre_usuario = %s", (nombre_usuario,))
+            existe = cursor.fetchone() is not None
+            cursor.close(); conexion.close()
+            return existe
+        return False
+
+    def actualizar_credenciales_usuario(self, id_usuario, nuevo_usuario=None, nueva_password=None):
+        if not id_usuario:
+            return False
+
+        updates = []
+        params = []
+        if nuevo_usuario:
+            updates.append("nombre_usuario = %s")
+            params.append(nuevo_usuario)
+        if nueva_password:
+            updates.append("password = %s")
+            params.append(nueva_password)
+
+        if not updates:
+            return False
+
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor()
+            try:
+                if nuevo_usuario:
+                    cursor.execute("SELECT idusuario FROM usuario WHERE nombre_usuario = %s AND idusuario <> %s", (nuevo_usuario, id_usuario))
+                    if cursor.fetchone():
+                        return False
+                sql = f"UPDATE usuario SET {', '.join(updates)} WHERE idusuario = %s"
+                params.append(id_usuario)
+                cursor.execute(sql, tuple(params))
+                conexion.commit()
+                return True
+            except Exception as e:
+                print(f"Error al actualizar credenciales: {e}")
+                return False
+            finally:
+                cursor.close(); conexion.close()
+        return False
 
     def actualizar_notas_cliente(self, id_cliente, notas):
         conexion = self.conectar()
@@ -264,13 +376,24 @@ class Database:
         conexion = self.conectar()
         if conexion:
             cursor = conexion.cursor(dictionary=True)
-            cursor.execute("SELECT e.idempleado, p.nombre FROM empleado e JOIN persona p ON e.persona_idpersona = p.idpersona")
-            res = cursor.fetchall()
-            cursor.close(); conexion.close()
-            return res
+            try:
+                # Usamos LEFT JOIN por si algún dato en 'persona' falta, 
+                # aunque lo ideal es que siempre existan ambos.
+                sql = """SELECT e.idempleado, p.nombre, p.apellido 
+                        FROM empleado e 
+                        JOIN persona p ON e.persona_idpersona = p.idpersona 
+                        ORDER BY p.apellido ASC"""
+                cursor.execute(sql)
+                return cursor.fetchall()
+            except Exception as e:
+                print(f"Error al obtener empleados: {e}")
+                return []
+            finally:
+                cursor.close()
+                conexion.close()
         return []
 
-    def agregar_empleado(self, nombre, apellido, mail, dni):
+    def agregar_empleado(self, nombre, apellido, mail, dni, password=None):
         conexion = self.conectar()
         if conexion:
             cursor = conexion.cursor()
@@ -280,12 +403,70 @@ class Database:
                 id_persona = cursor.lastrowid
                 cursor.execute("INSERT INTO empleado (persona_idpersona) VALUES (%s)", (id_persona,))
                 conexion.commit()
+
+                if password:
+                    try:
+                        self.crear_usuario_para_empleado_por_dni(dni, password)
+                    except Exception as e:
+                        print(f"Error al crear usuario para empleado: {e}")
                 return True
             except Exception as e:
                 print(f"Error al agregar empleado: {e}")
                 return False
             finally: cursor.close(); conexion.close()
         return False
+
+    def crear_usuario_para_empleado_por_dni(self, dni, password):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            try:
+                cursor.execute("SELECT idusuario FROM usuario WHERE nombre_usuario = %s", (dni,))
+                if cursor.fetchone():
+                    return True
+
+                sql = "INSERT INTO usuario (nombre_usuario, password, rol) VALUES (%s, %s, 'empleado')"
+                cursor.execute(sql, (dni, password))
+                conexion.commit()
+                return True
+            except Exception as e:
+                print(f"Error al crear usuario: {e}")
+                return False
+            finally:
+                cursor.close(); conexion.close()
+        return False
+
+    def crear_usuario_para_empleado(self, id_empleado, password):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            try:
+                sql = "SELECT p.dni FROM empleado e JOIN persona p ON e.persona_idpersona = p.idpersona WHERE e.idempleado = %s"
+                cursor.execute(sql, (id_empleado,))
+                row = cursor.fetchone()
+                if not row or not row.get('dni'):
+                    return False
+                dni = row['dni']
+                return self.crear_usuario_para_empleado_por_dni(dni, password)
+            finally:
+                cursor.close(); conexion.close()
+        return False
+
+    def obtener_id_empleado_por_dni(self, dni):
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            try:
+                sql = "SELECT e.idempleado FROM empleado e JOIN persona p ON e.persona_idpersona = p.idpersona WHERE p.dni = %s"
+                cursor.execute(sql, (dni,))
+                row = cursor.fetchone()
+                return row['idempleado'] if row and row.get('idempleado') else None
+            except Exception as e:
+                print(f"Error al obtener idempleado por DNI: {e}")
+                return None
+            finally:
+                cursor.close(); conexion.close()
+        return None
 
     def registrar_egreso(self, monto, descripcion):
         conexion = self.conectar()
@@ -317,26 +498,28 @@ class Database:
             # Usamos 'fechaPago' que es el nombre real en tu DB[cite: 11]
             
             if periodo == "Semanal":
-                # Agrupa por nombre del día para que sea más visual
-                sql = """SELECT DAYNAME(fecha) as etiqueta, SUM(monto) as total 
-                        FROM pago 
-                        WHERE YEARWEEK(fecha) = YEARWEEK(NOW()) 
-                        GROUP BY etiqueta ORDER BY DAYOFWEEK(fecha)"""
-            
+                # Agrupa por día de la semana usando expresiones completas para evitar ONLY_FULL_GROUP_BY
+                sql = """SELECT DAYOFWEEK(fecha) AS orden, DAYNAME(fecha) AS etiqueta, SUM(monto) AS total
+                        FROM pago
+                        WHERE YEARWEEK(fecha) = YEARWEEK(NOW())
+                        GROUP BY DAYOFWEEK(fecha), DAYNAME(fecha)
+                        ORDER BY orden"""
+
             elif periodo == "Mensual":
-                # Agrupa por el día del mes (1, 2, 3...)
-                sql = """SELECT DATE_FORMAT(fecha, '%d/%m') as etiqueta, SUM(monto) as total 
-                        FROM pago 
-                        WHERE MONTH(fecha) = MONTH(NOW()) AND YEAR(fecha) = YEAR(NOW()) 
-                        GROUP BY etiqueta"""
-            
+                # Agrupa por día del mes con la fecha formateada y el número del día para ordenar
+                sql = """SELECT DAY(fecha) AS dia_num, DATE_FORMAT(fecha, '%d/%m') AS etiqueta, SUM(monto) AS total
+                        FROM pago
+                        WHERE MONTH(fecha) = MONTH(NOW()) AND YEAR(fecha) = YEAR(NOW())
+                        GROUP BY dia_num, DATE_FORMAT(fecha, '%d/%m')
+                        ORDER BY dia_num"""
+
             else: # Anual
-                # Agrupa por mes
-                sql = """SELECT MONTHNAME(fecha) as etiqueta, SUM(monto) as total 
-                        FROM pago 
-                        WHERE YEAR(fecha) = YEAR(NOW()) 
-                        GROUP BY MONTH(fecha) 
-                        ORDER BY MONTH(fecha)"""
+                # Agrupa por mes asegurando orden correcto
+                sql = """SELECT MONTH(fecha) AS mes_num, MONTHNAME(fecha) AS etiqueta, SUM(monto) AS total
+                        FROM pago
+                        WHERE YEAR(fecha) = YEAR(NOW())
+                        GROUP BY mes_num, MONTHNAME(fecha)
+                        ORDER BY mes_num"""
             
             try:
                 cursor.execute(sql)
@@ -355,14 +538,15 @@ class Database:
         if conexion:
             cursor = conexion.cursor(dictionary=True)
             try:
-                # Agregamos 'password' a la consulta para que el sistema
-                # pueda usarla después en validaciones de seguridad (como los retiros)
-                sql = """SELECT idusuario, nombre_usuario, rol, password 
-                         FROM usuario 
-                         WHERE nombre_usuario = %s AND password = %s"""
-                
+                # Usamos la relación directa empleado_idempleado de la tabla usuario
+                sql = """SELECT u.idusuario, u.nombre_usuario, u.rol, u.empleado_idempleado as idempleado,
+                                 p.nombre, p.apellido, p.dni
+                         FROM usuario u
+                         LEFT JOIN empleado e ON u.empleado_idempleado = e.idempleado
+                         LEFT JOIN persona p ON e.persona_idpersona = p.idpersona
+                         WHERE u.nombre_usuario = %s AND u.password = %s"""
                 cursor.execute(sql, (usuario, password))
-                return cursor.fetchone() # Ahora devuelve un diccionario con la contraseña incluida[cite: 10]
+                return cursor.fetchone()
             except Exception as e:
                 print(f"Error en validación: {e}")
                 return None

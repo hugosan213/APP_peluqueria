@@ -9,32 +9,38 @@ class ServiciosTab:
         self.setup_ui()
 
     def setup_ui(self):
-        f_top = ctk.CTkFrame(self.master, fg_color="transparent")
-        f_top.pack(pady=10, fill="x", padx=30)
+        wrapper = ctk.CTkFrame(self.master, fg_color="transparent")
+        wrapper.pack(fill="both", expand=True, padx=30, pady=20)
+
+        header = ctk.CTkFrame(wrapper, fg_color="transparent")
+        header.pack(fill="x", pady=(0, 15))
+
+        ctk.CTkLabel(header, text="GESTIÓN DE TARIFAS", font=("Inter", 22, "bold"), text_color="#5C4033").pack(side="left")
         
-        ctk.CTkLabel(f_top, text="GESTIÓN DE TARIFAS", font=("Inter", 20, "bold"), text_color="#5C4033").pack(side="left")
-        
-        # Corrección: Acceso al rol a través de self.parent[cite: 18]
         if self.parent.usuario_actual['rol'] == 'admin':
-            ctk.CTkButton(f_top, text="+ Nuevo Servicio", fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
+            ctk.CTkButton(header, text="+ Nuevo Servicio", fg_color="#8B4513", hover_color="#A0522D", corner_radius=12,
                           font=("Inter", 12, "bold"), command=self.abrir_formulario_servicio).pack(side="right")
-        
-        self.frame_lista_precios = ctk.CTkScrollableFrame(self.master, fg_color="transparent")
-        self.frame_lista_precios.pack(fill="both", expand=True, padx=30)
+
+        self.frame_lista_precios = ctk.CTkScrollableFrame(wrapper, fg_color="transparent", corner_radius=18, border_width=1, border_color="#E3D6C4")
+        self.frame_lista_precios.pack(fill="both", expand=True)
         self.cargar_servicios_edicion()
 
     def cargar_servicios_edicion(self):
         for widget in self.frame_lista_precios.winfo_children(): 
             widget.destroy()
             
-        # Corrección: Acceso al rol a través de self.parent[cite: 18]
         es_admin = self.parent.usuario_actual['rol'] == 'admin'
+        servicios = self.db.obtener_servicios_detallados()
 
-        for s in self.db.obtener_servicios_detallados():
-            row = ctk.CTkFrame(self.frame_lista_precios, fg_color="#FFFFFF", border_width=1, border_color="#E5E1DA", corner_radius=10)
-            row.pack(fill="x", pady=4, padx=5)
+        if not servicios:
+            ctk.CTkLabel(self.frame_lista_precios, text="No hay servicios cargados.", font=("Inter", 14), text_color="#5C4033").pack(pady=80)
+            return
+
+        for s in servicios:
+            row = ctk.CTkFrame(self.frame_lista_precios, fg_color="#FFFFFF", border_width=1, border_color="#E5E1DA", corner_radius=15)
+            row.pack(fill="x", pady=8, padx=10)
             
-            ctk.CTkLabel(row, text=s['nombre'].upper(), width=200, anchor="w", font=("Inter", 12, "bold")).pack(side="left", padx=20, pady=10)
+            ctk.CTkLabel(row, text=s['nombre'].upper(), width=220, anchor="w", font=("Inter", 13, "bold"), text_color="#5C4033").pack(side="left", padx=20, pady=14)
             
             ctk.CTkLabel(row, text="$").pack(side="left")
             e_p = ctk.CTkEntry(row, width=80)
