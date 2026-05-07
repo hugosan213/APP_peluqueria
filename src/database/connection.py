@@ -393,28 +393,42 @@ class Database:
                 conexion.close()
         return []
 
-    def agregar_empleado(self, nombre, apellido, mail, dni, password=None):
+    def agregar_empleado_completo(self, nombre, apellido, mail, dni, password):
         conexion = self.conectar()
-        if conexion:
-            cursor = conexion.cursor()
-            try:
-                sql_p = "INSERT INTO persona (nombre, apellido, mail, dni) VALUES (%s, %s, %s, %s)"
-                cursor.execute(sql_p, (nombre, apellido, mail, dni))
-                id_persona = cursor.lastrowid
-                cursor.execute("INSERT INTO empleado (persona_idpersona) VALUES (%s)", (id_persona,))
-                conexion.commit()
+        if not conexion:
+            return False
+            
+        cursor = conexion.cursor()
+        try:
+            # Iniciamos transacción
+            conexion.start_transaction()
 
-                if password:
-                    try:
-                        self.crear_usuario_para_empleado_por_dni(dni, password)
-                    except Exception as e:
-                        print(f"Error al crear usuario para empleado: {e}")
-                return True
-            except Exception as e:
-                print(f"Error al agregar empleado: {e}")
-                return False
-            finally: cursor.close(); conexion.close()
-        return False
+            # 1. Insertar en PERSONA
+            sql_p = "INSERT INTO persona (nombre, apellido, mail, dni) VALUES (%s, %s, %s, %s)"
+            cursor.execute(sql_p, (nombre, apellido, mail, dni))
+            id_persona = cursor.lastrowid
+
+            # 2. Insertar en EMPLEADO vinculado a la persona
+            sql_e = "INSERT INTO empleado (persona_idpersona) VALUES (%s)"
+            cursor.execute(sql_e, (id_persona,))
+            id_empleado = cursor.lastrowid
+
+            # 3. Insertar en USUARIO vinculado al empleado (DNI como nombre de usuario)
+            # El rol es 'empleado' por defecto
+            sql_u = "INSERT INTO usuario (nombre_usuario, password, rol, empleado_idempleado) VALUES (%s, %s, 'empleado', %s)"
+            cursor.execute(sql_u, (dni, password, id_empleado))
+
+            # Si todo salió bien, confirmamos
+            conexion.commit()
+            return True
+        except Exception as e:
+            # Si falla cualquier paso, revertimos todo para no dejar datos huérfanos
+            print(f"Error al registrar empleado completo: {e}")
+            conexion.rollback()
+            return False
+        finally:
+            cursor.close()
+            conexion.close()
 
     def crear_usuario_para_empleado_por_dni(self, dni, password):
         conexion = self.conectar()
@@ -571,3 +585,47 @@ class Database:
             finally:
                 cursor.close(); conexion.close()
         return []
+    
+
+def eliminar_empleado(self, id_empleado):
+        conexion = self.conectar()
+        if not conexion:
+            return False
+        
+        cursor = conexion.cursor()
+        try:
+            conexion.start_transaction()
+            # 1. Borramos el usuario asociado primero (por la clave foránea)
+            sql_u = "DELETE FROM usuario WHERE empleado_idempleado = %s"
+            cursor.execute(sql_u, (id_empleado,))
+            
+            # 2. Borramos el registro de la tabla empleado
+            sql_e = "DELETE FROM empleado WHERE idempleado = %s"
+            cursor.execute(sql_e, (id_empleado,))
+            
+            conexion.commit()
+            return True
+        except Exception as e:
+            print(f"Error al eliminar empleado: {e}")
+            conexion.rollback()
+            return False
+        finally:
+            cursor.close()
+            conexion.close()
+
+def actualizar_credenciales_propio(self, id_empleado, nuevo_usuario, nueva_pass):
+        conexion = self.conectar()
+        if not conexion: return False
+        cursor = conexion.cursor()
+        try:
+            # Actualizamos el nombre de usuario y la contraseña 
+            # solo para el empleado que tiene la sesión iniciada
+            sql = "UPDATE usuario SET nombre_usuario = %s, password = %s WHERE empleado_idempleado = %s"
+            cursor.execute(sql, (nuevo_usuario, nueva_pass, id_empleado))
+            conexion.commit()
+            return True
+        except Exception as e:
+            print(f"Error al actualizar perfil: {e}")
+            return False
+        finally:
+            cursor.close(); conexion.close()

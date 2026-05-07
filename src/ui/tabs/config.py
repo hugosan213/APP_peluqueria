@@ -9,105 +9,118 @@ class ConfigTab:
         self.setup_tab_gestion()
 
     def setup_tab_gestion(self):
-        wrapper = ctk.CTkFrame(self.master, fg_color="transparent")
-        wrapper.pack(fill="both", expand=True, padx=30, pady=20)
+        # Contenedor principal con scroll por si hay muchos empleados
+        self.main_container = ctk.CTkScrollableFrame(self.master, fg_color="transparent")
+        self.main_container.pack(fill="both", expand=True, padx=20, pady=10)
 
-        ctk.CTkLabel(wrapper, text="REGISTRAR NUEVO EMPLEADO", font=("Inter", 22, "bold"), text_color="#5C4033").pack(pady=(0, 10))
-        ctk.CTkLabel(wrapper, text="Completa los datos y registra al empleado para usarlo en agenda y cobros.", font=("Inter", 12), text_color="#5C4033").pack(pady=(0, 20))
+        # --- SECCIÓN: REGISTRO ---
+        header_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        header_frame.pack(fill="x", pady=(10, 20))
+        
+        ctk.CTkLabel(header_frame, text="GESTIÓN DE PERSONAL", font=("Inter", 24, "bold"), text_color="#5C4033").pack(anchor="w")
+        ctk.CTkLabel(header_frame, text="Registra nuevos peluqueros y administra sus accesos al sistema.", 
+                     font=("Inter", 13), text_color="#8B735B").pack(anchor="w")
 
-        form = ctk.CTkFrame(wrapper, fg_color="#F2F0EB", corner_radius=18, border_width=1, border_color="#E3D6C4")
-        form.pack(fill="x", padx=10, pady=(0, 20))
+        # Tarjeta del Formulario
+        form_card = ctk.CTkFrame(self.main_container, fg_color="#F2F0EB", corner_radius=15, border_width=1, border_color="#E3D6C4")
+        form_card.pack(fill="x", pady=10)
 
-        self.en_nom = ctk.CTkEntry(form, placeholder_text="Nombre", width=420)
-        self.en_nom.pack(pady=8, padx=20)
+        grid_frame = ctk.CTkFrame(form_card, fg_color="transparent")
+        grid_frame.pack(pady=20, padx=20, fill="x")
 
-        self.en_ape = ctk.CTkEntry(form, placeholder_text="Apellido", width=420)
-        self.en_ape.pack(pady=8, padx=20)
+        # Entradas organizadas (Simulando columnas)
+        # Fila 1: Nombre y Apellido
+        f1 = ctk.CTkFrame(grid_frame, fg_color="transparent")
+        f1.pack(fill="x", pady=5)
+        self.en_nom = ctk.CTkEntry(f1, placeholder_text="Nombre", height=40, corner_radius=10); self.en_nom.pack(side="left", expand=True, fill="x", padx=(0,10))
+        self.en_ape = ctk.CTkEntry(f1, placeholder_text="Apellido", height=40, corner_radius=10); self.en_ape.pack(side="left", expand=True, fill="x")
 
-        self.en_dni = ctk.CTkEntry(form, placeholder_text="DNI", width=420)
-        self.en_dni.pack(pady=8, padx=20)
+        # Fila 2: DNI e Email
+        f2 = ctk.CTkFrame(grid_frame, fg_color="transparent")
+        f2.pack(fill="x", pady=5)
+        self.en_dni = ctk.CTkEntry(f2, placeholder_text="DNI (Será el usuario)", height=40, corner_radius=10); self.en_dni.pack(side="left", expand=True, fill="x", padx=(0,10))
+        self.en_mai = ctk.CTkEntry(f2, placeholder_text="Email (Opcional)", height=40, corner_radius=10); self.en_mai.pack(side="left", expand=True, fill="x")
 
-        self.en_mai = ctk.CTkEntry(form, placeholder_text="Email", width=420)
-        self.en_mai.pack(pady=8, padx=20)
+        # Fila 3: Contraseña
+        self.en_pass = ctk.CTkEntry(grid_frame, placeholder_text="Contraseña de acceso", height=40, corner_radius=10, show="*")
+        self.en_pass.pack(fill="x", pady=5)
 
-        self.en_pass = ctk.CTkEntry(form, placeholder_text="Contraseña", width=420, show="*")
-        self.en_pass.pack(pady=8, padx=20)
+        self.lbl_feedback = ctk.CTkLabel(grid_frame, text="", font=("Inter", 12, "bold"))
+        self.lbl_feedback.pack(pady=5)
 
-        self.lbl_feedback = ctk.CTkLabel(form, text="", font=("Inter", 11), text_color="#27632a")
-        self.lbl_feedback.pack(pady=(5, 0))
+        ctk.CTkButton(form_card, text="➕ REGISTRAR EMPLEADO", fg_color="#8B4513", hover_color="#A0522D", 
+                      height=45, corner_radius=12, font=("Inter", 13, "bold"), 
+                      command=self.guardar_empleado).pack(pady=(0, 25), padx=40, fill="x")
 
-        ctk.CTkButton(form, text="Registrar Peluquero/a", fg_color="#8B4513", hover_color="#A0522D", corner_radius=12,
-                      font=("Inter", 12, "bold"), width=180, command=self.guardar_empleado).pack(pady=20)
-
-        list_frame = ctk.CTkFrame(wrapper, fg_color="#FFFFFF", corner_radius=18, border_width=1, border_color="#E3D6C4")
-        list_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
-
-        ctk.CTkLabel(list_frame, text="Empleados registrados", font=("Inter", 16, "bold"), anchor="w").pack(fill="x", padx=20, pady=(20, 10))
-
-        self.scroll_empleados = ctk.CTkScrollableFrame(list_frame, fg_color="transparent", border_width=0)
-        self.scroll_empleados.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        # --- SECCIÓN: LISTADO ---
+        ctk.CTkLabel(self.main_container, text="EQUIPO DE TRABAJO", font=("Inter", 18, "bold"), text_color="#5C4033").pack(anchor="w", pady=(20, 10))
+        
+        self.lista_container = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        self.lista_container.pack(fill="x", expand=True)
 
         self.cargar_empleados()
 
     def validar_campos(self):
-        nombre = self.en_nom.get().strip()
-        apellido = self.en_ape.get().strip()
-        dni = self.en_dni.get().strip()
-        email = self.en_mai.get().strip()
-        password = self.en_pass.get().strip()
-
-        if not nombre or not apellido or not dni or not password:
-            self.lbl_feedback.configure(text="Nombre, apellido, DNI y contraseña son obligatorios.", text_color="#9D2B2B")
+        vals = [self.en_nom.get(), self.en_ape.get(), self.en_dni.get(), self.en_pass.get()]
+        if not all(v.strip() for v in vals):
+            self.lbl_feedback.configure(text="⚠ Todos los campos (excepto email) son obligatorios", text_color="#9D2B2B")
             return False
-
-        if email and "@" not in email:
-            self.lbl_feedback.configure(text="Ingresa un email válido o déjalo vacío.", text_color="#9D2B2B")
-            return False
-
-        self.lbl_feedback.configure(text="", text_color="#27632a")
         return True
 
     def guardar_empleado(self):
-        if not self.validar_campos():
-            return
+        if not self.validar_campos(): return
 
-        if self.db.agregar_empleado(
-                self.en_nom.get().strip(),
-                self.en_ape.get().strip(),
-                self.en_mai.get().strip(),
-                self.en_dni.get().strip(),
-                self.en_pass.get().strip()):
-            self.lbl_feedback.configure(text="Empleado registrado correctamente y usuario creado.", text_color="#27632a")
-            for entry in [self.en_nom, self.en_ape, self.en_dni, self.en_mai, self.en_pass]:
-                entry.delete(0, 'end')
+        nom, ape, dni, mai, pas = [e.get().strip() for e in [self.en_nom, self.en_ape, self.en_dni, self.en_mai, self.en_pass]]
+
+        if self.db.agregar_empleado_completo(nom, ape, mai, dni, pas):
+            self.lbl_feedback.configure(text=f"✅ {nom} registrado correctamente", text_color="#27632a")
+            for e in [self.en_nom, self.en_ape, self.en_dni, self.en_mai, self.en_pass]: e.delete(0, 'end')
             self.cargar_empleados()
         else:
-            self.lbl_feedback.configure(text="No se pudo registrar el empleado. Revisa la conexión.", text_color="#9D2B2B")
+            self.lbl_feedback.configure(text="❌ Error: El DNI ya existe", text_color="#9D2B2B")
 
     def cargar_empleados(self):
-        for widget in self.scroll_empleados.winfo_children():
+        for widget in self.lista_container.winfo_children():
             widget.destroy()
 
         empleados = self.db.obtener_empleados()
 
         if not empleados:
-            ctk.CTkLabel(self.scroll_empleados, text="No hay empleados registrados aún.", font=("Inter", 12), text_color="#5C4033").pack(pady=20)
+            ctk.CTkLabel(self.lista_container, text="No hay personal registrado.", font=("Inter", 13, "italic")).pack(pady=20)
             return
 
-        for empleado in empleados:
-            nombre_completo = f"{empleado.get('nombre', '')} {empleado.get('apellido', '')}".strip()
-            fila = ctk.CTkFrame(self.scroll_empleados, fg_color="#F2F0EB", corner_radius=12, border_width=1, border_color="#E3D6C4")
-            fila.pack(fill="x", pady=6)
+        for emp in empleados:
+            # --- TARJETA ---
+            card = ctk.CTkFrame(self.lista_container, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E5E1DA")
+            card.pack(fill="x", pady=5)
 
-            ctk.CTkLabel(fila, text=nombre_completo.upper(), font=("Inter", 13, "bold"), anchor="w").pack(fill="x", padx=15, pady=(12, 3))
-            ctk.CTkLabel(fila, text=f"DNI: {empleado.get('dni', '')}   |   Email: {empleado.get('mail', 'sin email')}", font=("Inter", 11), text_color="#5C4033", anchor="w").pack(fill="x", padx=15, pady=(0, 8))
+            # Contenedor de Info (Izquierda)
+            info_frame = ctk.CTkFrame(card, fg_color="transparent")
+            info_frame.pack(side="left", padx=20, pady=15, fill="x", expand=True)
 
-            if empleado.get('tiene_usuario'):
-                ctk.CTkLabel(fila, text="Usuario creado", font=("Inter", 11, "italic"), text_color="#27632a", anchor="w").pack(fill="x", padx=15, pady=(0, 10))
-            else:
-                btn = ctk.CTkButton(fila, text="Crear acceso", width=140, fg_color="#8B4513", hover_color="#A0522D", corner_radius=12,
-                              font=("Inter", 11, "bold"), command=lambda emp=empleado: self.abrir_crear_usuario(emp))
-                btn.pack(padx=15, pady=(0, 10), anchor="e")
+            ctk.CTkLabel(info_frame, text=f"👤 {emp['nombre']} {emp['apellido']}".upper(), 
+                         font=("Inter", 14, "bold"), text_color="#5C4033", anchor="w").pack(fill="x")
+            
+            sub_info = f"🆔 DNI: {emp.get('dni', '---')}  •  ✉️ {emp.get('mail', 'Sin email')}"
+            ctk.CTkLabel(info_frame, text=sub_info, font=("Inter", 11), text_color="#8B735B", anchor="w").pack(fill="x")
+
+            # --- BOTÓN ELIMINAR (Derecha) ---
+            # Definimos la función de borrado para este empleado específico
+            def confirmar_borrado(id_e=emp['idempleado'], nombre=emp['nombre']):
+                from tkinter import messagebox
+                if messagebox.askyesno("Confirmar Baja", f"¿Estás seguro de eliminar a {nombre}?\nSe revocará su acceso al sistema."):
+                    if self.db.eliminar_empleado(id_e):
+                        self.cargar_empleados() # Refrescar lista
+                        self.lbl_feedback.configure(text=f"Baja procesada: {nombre}", text_color="#27632a")
+                    else:
+                        messagebox.showerror("Error", "No se pudo eliminar. Es posible que el empleado tenga turnos registrados en la agenda.")
+
+            btn_del = ctk.CTkButton(card, text="🗑", width=40, height=40, 
+                                    fg_color="#FADBD8", hover_color="#F1948A", 
+                                    text_color="#943126", corner_radius=8,
+                                    font=("Inter", 16),
+                                    command=confirmar_borrado)
+            btn_del.pack(side="right", padx=20)
 
     def abrir_crear_usuario(self, empleado):
         v = ctk.CTkToplevel(self.master)

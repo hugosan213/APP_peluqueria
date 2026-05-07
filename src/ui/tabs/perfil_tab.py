@@ -9,33 +9,59 @@ class PerfilTab:
         self.setup_ui()
 
     def setup_ui(self):
-        wrapper = ctk.CTkFrame(self.master, fg_color="transparent")
-        wrapper.pack(fill="both", expand=True, padx=30, pady=20)
+        # Contenedor principal con scroll para consistencia
+        self.container = ctk.CTkScrollableFrame(self.master, fg_color="transparent")
+        self.container.pack(fill="both", expand=True, padx=20, pady=20)
 
-        ctk.CTkLabel(wrapper, text="MI CUENTA", font=("Inter", 24, "bold"), text_color="#5C4033").pack(pady=(0, 10))
-        ctk.CTkLabel(wrapper, text="Actualizá tu usuario y contraseña de acceso.", font=("Inter", 12), text_color="#5C4033").pack(pady=(0, 20))
+        # --- HEADER ---
+        header = ctk.CTkFrame(self.container, fg_color="transparent")
+        header.pack(fill="x", pady=(0, 20))
+        
+        ctk.CTkLabel(header, text="MI CUENTA", font=("Inter", 24, "bold"), text_color="#5C4033").pack(anchor="w")
+        ctk.CTkLabel(header, text="Gestioná tu acceso personal al sistema de forma segura.", 
+                     font=("Inter", 13), text_color="#8B735B").pack(anchor="w")
 
+        # --- TARJETA DE INFORMACIÓN ACTUAL ---
+        # Sacamos los datos del parent (MainWindow)
         current_username = self.parent.usuario_actual.get('nombre_usuario', '')
-        current_rol = self.parent.usuario_actual.get('rol', '')
+        current_rol = self.parent.usuario_actual.get('rol', 'empleado')
+        nombre_real = f"{self.parent.usuario_actual.get('nombre', '')} {self.parent.usuario_actual.get('apellido', '')}"
 
-        info_frame = ctk.CTkFrame(wrapper, fg_color="#F2F0EB", corner_radius=18, border_width=1, border_color="#E3D6C4")
-        info_frame.pack(fill="x", padx=10, pady=(0, 20))
+        info_card = ctk.CTkFrame(self.container, fg_color="#F2F0EB", corner_radius=15, border_width=1, border_color="#E3D6C4")
+        info_card.pack(fill="x", pady=10)
 
-        ctk.CTkLabel(info_frame, text=f"Usuario actual: {current_username}", font=("Inter", 12), text_color="#5C4033").pack(anchor="w", padx=20, pady=(20, 5))
-        ctk.CTkLabel(info_frame, text=f"Rol: {current_rol}", font=("Inter", 12), text_color="#5C4033").pack(anchor="w", padx=20, pady=(0, 20))
+        inner_info = ctk.CTkFrame(info_card, fg_color="transparent")
+        inner_info.pack(padx=25, pady=20, fill="x")
 
-        self.en_usuario = ctk.CTkEntry(info_frame, placeholder_text="Nuevo usuario", width=420)
-        self.en_usuario.pack(pady=(0, 10), padx=20)
-        self.en_password = ctk.CTkEntry(info_frame, placeholder_text="Nueva contraseña", width=420, show="*")
-        self.en_password.pack(pady=(0, 10), padx=20)
-        self.en_password_confirm = ctk.CTkEntry(info_frame, placeholder_text="Confirmar contraseña", width=420, show="*")
-        self.en_password_confirm.pack(pady=(0, 20), padx=20)
+        ctk.CTkLabel(inner_info, text=f"👤 {nombre_real.upper()}", font=("Inter", 18, "bold"), text_color="#5C4033", anchor="w").pack(fill="x")
+        ctk.CTkLabel(inner_info, text=f"Rol: {current_rol.capitalize()}  |  Usuario: {current_username}", 
+                     font=("Inter", 12, "italic"), text_color="#8B735B", anchor="w").pack(fill="x")
 
-        self.lbl_feedback = ctk.CTkLabel(info_frame, text="", font=("Inter", 11), text_color="#27632a")
-        self.lbl_feedback.pack(pady=(0, 10), padx=20)
+        # --- TARJETA DE EDICIÓN ---
+        edit_card = ctk.CTkFrame(self.container, fg_color="#FFFFFF", corner_radius=15, border_width=1, border_color="#E5E1DA")
+        edit_card.pack(fill="x", pady=10)
 
-        ctk.CTkButton(info_frame, text="Guardar cambios", fg_color="#8B4513", hover_color="#A0522D", corner_radius=12,
-                      font=("Inter", 12, "bold"), width=180, command=self.actualizar_credenciales).pack(pady=(0, 20), padx=20)
+        form_frame = ctk.CTkFrame(edit_card, fg_color="transparent")
+        form_frame.pack(pady=25, padx=25, fill="x")
+
+        ctk.CTkLabel(form_frame, text="ACTUALIZAR CREDENCIALES", font=("Inter", 14, "bold"), text_color="#5C4033").pack(pady=(0, 15))
+
+        self.en_usuario = ctk.CTkEntry(form_frame, placeholder_text="Nuevo nombre de usuario", height=40, corner_radius=10)
+        self.en_usuario.pack(fill="x", pady=5)
+        self.en_usuario.insert(0, current_username) # Ya lo dejamos cargado para que sea más fácil editar
+
+        self.en_password = ctk.CTkEntry(form_frame, placeholder_text="Nueva contraseña", height=40, corner_radius=10, show="*")
+        self.en_password.pack(fill="x", pady=5)
+
+        self.en_password_confirm = ctk.CTkEntry(form_frame, placeholder_text="Confirmar nueva contraseña", height=40, corner_radius=10, show="*")
+        self.en_password_confirm.pack(fill="x", pady=5)
+
+        self.lbl_feedback = ctk.CTkLabel(form_frame, text="", font=("Inter", 12, "bold"))
+        self.lbl_feedback.pack(pady=10)
+
+        ctk.CTkButton(form_frame, text="💾 GUARDAR CAMBIOS", fg_color="#8B4513", hover_color="#A0522D", 
+                      height=45, corner_radius=12, font=("Inter", 13, "bold"), 
+                      command=self.actualizar_credenciales).pack(pady=(10, 0), fill="x")
 
     def actualizar_credenciales(self):
         nuevo_usuario = self.en_usuario.get().strip()
