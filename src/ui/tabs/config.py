@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from database.db_usuarios import UsuariosDB
-
+from tkinter import messagebox
 class ConfigTab:
     def __init__(self, master, main_window):
         self.master = master
@@ -80,47 +80,52 @@ class ConfigTab:
             self.lbl_feedback.configure(text="❌ Error: El DNI ya existe", text_color="#9D2B2B")
 
     def cargar_empleados(self):
+        """Muestra la lista de empleados con el botón de Reset Password."""
+        # Limpiamos la lista actual
         for widget in self.lista_container.winfo_children():
             widget.destroy()
 
+        # Obtenemos los empleados de la base de datos
         empleados = self.db.obtener_empleados()
 
         if not empleados:
-            ctk.CTkLabel(self.lista_container, text="No hay personal registrado.", font=("Inter", 13, "italic")).pack(pady=20)
+            ctk.CTkLabel(self.lista_container, text="No hay personal registrado.", 
+                         font=("Inter", 13, "italic")).pack(pady=20)
             return
 
         for emp in empleados:
-            # --- TARJETA ---
-            card = ctk.CTkFrame(self.lista_container, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E5E1DA")
-            card.pack(fill="x", pady=5)
+            # Tarjeta de empleado
+            card = ctk.CTkFrame(self.lista_container, fg_color="#FFFFFF", corner_radius=12, 
+                                border_width=1, border_color="#E5E1DA")
+            card.pack(fill="x", pady=5, padx=5)
 
-            # Contenedor de Info (Izquierda)
+            # Contenedor de texto (Nombre)
             info_frame = ctk.CTkFrame(card, fg_color="transparent")
             info_frame.pack(side="left", padx=20, pady=15, fill="x", expand=True)
 
             ctk.CTkLabel(info_frame, text=f"👤 {emp['nombre']} {emp['apellido']}".upper(), 
                          font=("Inter", 14, "bold"), text_color="#5C4033", anchor="w").pack(fill="x")
-            
-            sub_info = f"🆔 DNI: {emp.get('dni', '---')}  •  ✉️ {emp.get('mail', 'Sin email')}"
-            ctk.CTkLabel(info_frame, text=sub_info, font=("Inter", 11), text_color="#8B735B", anchor="w").pack(fill="x")
 
-            # --- BOTÓN ELIMINAR (Derecha) ---
-            # Definimos la función de borrado para este empleado específico
+            # --- CONTENEDOR DE BOTONES (A la derecha) ---
+            actions_frame = ctk.CTkFrame(card, fg_color="transparent")
+            actions_frame.pack(side="right", padx=10)
+
+            # NUEVO: Botón Reset Password (La llave)
+            btn_reset = ctk.CTkButton(actions_frame, text="🔑", width=40, height=40,
+                                      fg_color="#E3D6C4", text_color="#5C4033", hover_color="#D3C5B4",
+                                      command=lambda e=emp: self.abrir_modal_reset_password(e))
+            btn_reset.pack(side="left", padx=5)
+
+            # Botón Eliminar (el que ya tenías)
             def confirmar_borrado(id_e=emp['idempleado'], nombre=emp['nombre']):
-                from tkinter import messagebox
-                if messagebox.askyesno("Confirmar Baja", f"¿Estás seguro de eliminar a {nombre}?\nSe revocará su acceso al sistema."):
+                if messagebox.askyesno("Confirmar Baja", f"¿Estás seguro de eliminar a {nombre}?"):
                     if self.db.eliminar_empleado(id_e):
-                        self.cargar_empleados() # Refrescar lista
-                        self.lbl_feedback.configure(text=f"Baja procesada: {nombre}", text_color="#27632a")
-                    else:
-                        messagebox.showerror("Error", "No se pudo eliminar. Es posible que el empleado tenga turnos registrados en la agenda.")
-
-            btn_del = ctk.CTkButton(card, text="🗑", width=40, height=40, 
-                                    fg_color="#FADBD8", hover_color="#F1948A", 
-                                    text_color="#943126", corner_radius=8,
-                                    font=("Inter", 16),
+                        self.cargar_empleados()
+            
+            btn_del = ctk.CTkButton(actions_frame, text="🗑", width=40, height=40, 
+                                    fg_color="#FADBD8", hover_color="#F1948A", text_color="#943126",
                                     command=confirmar_borrado)
-            btn_del.pack(side="right", padx=20)
+            btn_del.pack(side="left", padx=5)
 
     def abrir_crear_usuario(self, empleado):
         v = ctk.CTkToplevel(self.master)
@@ -152,3 +157,55 @@ class ConfigTab:
 
         ctk.CTkButton(v, text="Crear usuario", fg_color="#8B4513", hover_color="#A0522D", width=180, height=44, corner_radius=12,
                       font=("Inter", 12, "bold"), command=guardar_usuario).pack(pady=10)
+        
+    # --- DENTRO DE ConfigTab ---
+
+    def actualizar_lista_empleados(self):
+        for widget in self.scroll_empleados.winfo_children():
+            widget.destroy()
+
+        empleados = self.db.obtener_empleados_completos()
+        
+        for emp in empleados:
+            card = ctk.CTkFrame(self.scroll_empleados, fg_color="#F2F0EB", corner_radius=10)
+            card.pack(fill="x", pady=5)
+
+            # Info del empleado
+            info = f"{emp['nombre']} {emp['apellido']} | DNI: {emp['dni']} | Rol: {emp.get('rol', 'Sin Usuario')}"
+            ctk.CTkLabel(card, text=info, font=("Inter", 13)).pack(side="left", padx=15, pady=10)
+
+            # BOTÓN RESET PASSWORD (🔑)
+            btn_reset = ctk.CTkButton(card, text="🔑 Reset Pass", width=100, height=28,
+                                      fg_color="#E3D6C4", text_color="#5C4033", hover_color="#D3C5B4",
+                                      command=lambda e=emp: self.abrir_modal_reset_password(e))
+            btn_reset.pack(side="right", padx=10)
+
+    def abrir_modal_reset_password(self, empleado):
+        """Ventana para que el admin cambie la pass de un empleado."""
+        v = ctk.CTkToplevel(self.master)
+        v.title(f"Resetear acceso - {empleado['nombre']}")
+        v.geometry("400x320")
+        v.attributes("-topmost", True)
+        v.grab_set()
+
+        ctk.CTkLabel(v, text="RESTABLECER CONTRASEÑA", font=("Inter", 16, "bold")).pack(pady=20)
+        ctk.CTkLabel(v, text=f"Empleado: {empleado['nombre']} {empleado['apellido']}", font=("Inter", 12)).pack()
+
+        en_nueva_pass = ctk.CTkEntry(v, placeholder_text="Nueva contraseña temporal", width=300, show="*")
+        en_nueva_pass.pack(pady=20)
+
+        def confirmar():
+            nueva_p = en_nueva_pass.get().strip()
+            if not nueva_p:
+                messagebox.showwarning("Atención", "Ingrese la nueva contraseña.")
+                return
+            
+            # Aquí usamos self.db que definimos en el __init__
+            if self.db.forzar_cambio_password(empleado['idempleado'], nueva_p):
+                messagebox.showinfo("Éxito", "Contraseña actualizada correctamente.")
+                v.destroy()
+                self.actualizar_lista_empleados() # Refrescamos por si cambió el rol
+            else:
+                messagebox.showerror("Error", "No se pudo actualizar. Verifique si el empleado tiene un usuario creado.")
+
+        ctk.CTkButton(v, text="Guardar Cambios", fg_color="#5C4033", command=confirmar).pack(pady=10)

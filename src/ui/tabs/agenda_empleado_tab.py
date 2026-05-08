@@ -73,24 +73,45 @@ class AgendaEmpleadoTab:
                               font=("Inter", 11, "bold"), command=lambda trn=t: self.abrir_ventana_cobro(trn)).pack(padx=18, pady=(0, 16), anchor="e")
 
     def cargar_historial(self):
+        """Muestra el historial de cortes finalizados respetando el filtro de peluquero seleccionado."""
         for widget in self.frame_agenda.winfo_children():
             widget.destroy()
         
-        if not self.id_empleado:
-            ctk.CTkLabel(self.frame_agenda, text="No se encontró tu empleado. Comunicate con el administrador.", font=("Inter", 14), text_color="#A52A2A").pack(pady=80)
-            return
+        # Título dinámico según el filtro
+        titulo = "HISTORIAL GLOBAL DE CORTES" if self.filtro_actual == "Todos" else f"HISTORIAL DE: {self.filtro_actual}"
+        ctk.CTkLabel(self.frame_agenda, text=titulo, font=("Inter", 18, "bold"), text_color="#5C4033").pack(pady=20)
+        
+        # 1. Obtenemos el historial base (los últimos 50 cortes finalizados)
+        historial = self.db_agenda.obtener_historial_cortes()
+        
+        # 2. Aplicamos el filtrado por peluquero si no es "Todos"
+        if self.filtro_actual != "Todos":
+            historial = [t for t in historial if t.get('Peluquero') == self.filtro_actual]
 
-        ctk.CTkLabel(self.frame_agenda, text="HISTORIAL DE MIS CORTEs", font=("Inter", 16, "bold")).pack(pady=10)
-        historial = self.db.obtener_historial_por_empleado(self.id_empleado)
         if not historial:
-            ctk.CTkLabel(self.frame_agenda, text="No hay cortes finalizados para mostrar.", font=("Inter", 14), text_color="#5C4033").pack(pady=80)
+            msg = "No hay cortes finalizados registrados." if self.filtro_actual == "Todos" else f"No hay historial para {self.filtro_actual}."
+            ctk.CTkLabel(self.frame_agenda, text=msg, font=("Inter", 14), text_color="#5C4033").pack(pady=80)
             return
-
+        
+        # 3. Renderizado de las tarjetas de historial
         for t in historial:
-            card = ctk.CTkFrame(self.frame_agenda, fg_color="#E5E1DA", corner_radius=12)
-            card.pack(fill="x", pady=6, padx=10)
-            ctk.CTkLabel(card, text=f"🕒 {t['Fecha_Hora']} | 👤 {t['Cliente']}", font=("Inter", 14)).pack(side="left", padx=20, pady=15)
-            ctk.CTkLabel(card, text=f"✅ {t['Servicio']}", text_color="#6B8E23", font=("Inter", 12, "italic")).pack(side="right", padx=20)
+            card = ctk.CTkFrame(self.frame_agenda, fg_color="#FFFFFF", border_width=1, border_color="#E5E1DA", corner_radius=15)
+            card.pack(fill="x", pady=8, padx=16)
+            
+            # Fila superior: Fecha y Cliente
+            top_row = ctk.CTkFrame(card, fg_color="transparent")
+            top_row.pack(fill="x", padx=18, pady=(15, 5))
+            ctk.CTkLabel(top_row, text=f"🕒 {t['Fecha_Hora']}", font=("Inter", 13, "bold"), text_color="#5C4033").pack(side="left")
+            ctk.CTkLabel(top_row, text=f"👤 {t['Cliente']}", font=("Inter", 13), text_color="#5C4033").pack(side="right")
+            
+            # Fila inferior: Servicio y Peluquero (para saber quién lo hizo en la vista global)
+            info_row = ctk.CTkFrame(card, fg_color="transparent")
+            info_row.pack(fill="x", padx=18, pady=(0, 15))
+            ctk.CTkLabel(info_row, text=f"✅ {t['Servicio']}", text_color="#6B8E23", font=("Inter", 12, "italic")).pack(side="left")
+            
+            # Solo mostramos el nombre del peluquero si estamos en vista "Todos"
+            if self.filtro_actual == "Todos":
+                ctk.CTkLabel(info_row, text=f"💇 {t.get('Peluquero', 'N/A')}", font=("Inter", 11), text_color="#8E8E8E").pack(side="right")
 
     def abrir_formulario(self):
         v = ctk.CTkToplevel(self.master)

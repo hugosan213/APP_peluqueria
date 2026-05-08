@@ -58,28 +58,32 @@ class CajaTab:
         ctk.CTkLabel(totales_card, text=f"SALDO EN CAJA: $ {saldo_neto:,.2f}", font=("Inter", 24, "bold"), text_color="#2D2424").pack(anchor="w", padx=20, pady=(0, 18))
 
     def abrir_formulario_egreso(self):
-        """Seguridad y formulario de retiro con validación de cancelación."""
+        """Seguridad y formulario de retiro con validación de contraseña y botón de acción."""
         dialogo = ctk.CTkInputDialog(text="Ingrese su contraseña para autorizar el retiro:", title="Seguridad de Caja")
         password_ingresada = dialogo.get_input()
 
-        # 1. Verificamos si el usuario apretó 'Cancelar' o cerró la ventana (devuelve None)
-        # 2. Verificamos que no haya enviado el campo vacío
-        if password_ingresada is None or password_ingresada.strip() == "":
-            return # Salimos de la función silenciosamente
+        # 1. Verificamos si el usuario apretó 'Cancelar' o cerró la ventana
+        if password_ingresada is None:
+            return
 
-        # 3. Solo si hay texto, comparamos con la contraseña del usuario actual
+        # 2. Verificamos que no haya enviado el campo vacío
+        if password_ingresada.strip() == "":
+            messagebox.showwarning("Atención", "Debe ingresar una contraseña.")
+            return
+
+        # 3. Comparación con la contraseña del usuario actual
         if password_ingresada == self.parent.usuario_actual.get('password'):
             v = ctk.CTkToplevel(self.master)
-            v.geometry("350x400")
+            v.geometry("350x450") # Un poco más de alto para que entre el botón cómodo
             v.attributes("-topmost", True)
             v.title("Nuevo Egreso")
             
             ctk.CTkLabel(v, text="SALIDA DE DINERO", font=("Inter", 16, "bold")).pack(pady=20)
             
-            em = ctk.CTkEntry(v, placeholder_text="Monto", width=250)
+            em = ctk.CTkEntry(v, placeholder_text="Monto (ej: 1500.50)", width=250)
             em.pack(pady=10)
             
-            ed = ctk.CTkEntry(v, placeholder_text="Descripción", width=250)
+            ed = ctk.CTkEntry(v, placeholder_text="Descripción / Motivo", width=250)
             ed.pack(pady=10)
             
             def guardar():
@@ -92,24 +96,37 @@ class CajaTab:
                 
                 try:
                     monto_a_retirar = float(monto_texto)
-                    # Obtenemos el saldo actual antes de permitir el retiro
+                    
+                    # Obtenemos el saldo actual para validar
                     ingresos = self.db.obtener_caja_diaria()
                     total_ingresos = sum(float(r['total']) for r in ingresos)
                     egresos_ya_realizados = float(self.db.obtener_total_egresos_hoy())
                     saldo_disponible = total_ingresos - egresos_ya_realizados
 
-                    # VALIDACIÓN CRÍTICA:
+                    # VALIDACIÓN DE SALDO
                     if monto_a_retirar > saldo_disponible:
                         messagebox.showerror("Error de Caja", 
                             f"No hay dinero suficiente.\nSaldo disponible: $ {saldo_disponible:,.2f}")
                         return
 
+                    # Registro en base de datos
                     if self.db.registrar_egreso(monto_a_retirar, desc):
+                        messagebox.showinfo("Éxito", "Egreso registrado correctamente.")
                         v.destroy()
-                        self.cargar_caja_diaria()
+                        self.cargar_caja_diaria() # Refresca la vista de la caja
                 except ValueError:
                     messagebox.showerror("Error", "Ingrese un monto numérico válido.")
+
+            # --- EL BOTÓN QUE FALTABA ---
+            btn_confirmar = ctk.CTkButton(v, 
+                                          text="Confirmar Retiro", 
+                                          fg_color="#CD5C5C", 
+                                          hover_color="#A52A2A",
+                                          font=("Inter", 13, "bold"),
+                                          height=40,
+                                          command=guardar)
+            btn_confirmar.pack(pady=30)
             
         else:
-            # Si ingresó algo pero no coincide
+            # Si la contraseña no coincide
             messagebox.showerror("Error", "Contraseña incorrecta. Operación cancelada.")

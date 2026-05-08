@@ -2,11 +2,20 @@ from .base import BaseDatabase
 
 class FinanzasDB(BaseDatabase):
 
+    # En db_finanzas.py
     def obtener_caja_diaria(self):
         conexion = self.conectar()
         if conexion:
             cursor = conexion.cursor(dictionary=True)
-            cursor.execute("SELECT mp.tipoPago, SUM(p.monto) as total FROM pago p JOIN metodo_pago mp ON p.metodo_pago_idmetodopago = mp.idmetodopago WHERE DATE(p.fecha) = CURDATE() GROUP BY mp.tipoPago")
+            # Asegúrate de que 'p.fecha' coincida con el nombre en tu tabla 'pago'
+            sql = """
+                SELECT mp.tipoPago, SUM(p.monto) as total 
+                FROM pago p 
+                JOIN metodo_pago mp ON p.metodo_pago_idmetodopago = mp.idmetodopago 
+                WHERE DATE(p.fecha) = CURDATE() 
+                GROUP BY mp.tipoPago
+            """
+            cursor.execute(sql)
             res = cursor.fetchall()
             cursor.close(); conexion.close()
             return res
@@ -117,4 +126,30 @@ class FinanzasDB(BaseDatabase):
             finally:
                 cursor.close(); conexion.close()
         return []
+    
+    def obtener_ranking_empleados(self):
+        """Calcula el total generado por cada empleado en el mes actual."""
+        conexion = self.conectar()
+        if conexion:
+            cursor = conexion.cursor(dictionary=True)
+            sql = """SELECT CONCAT(p.nombre, ' ', p.apellido) AS empleado, SUM(pag.monto) AS total
+                     FROM pago pag
+                     JOIN reserva r ON pag.reserva_idreserva = r.idreserva
+                     JOIN empleado e ON r.empleado_idempleado = e.idempleado
+                     JOIN persona p ON e.persona_idpersona = p.idpersona
+                     WHERE MONTH(pag.fecha) = MONTH(NOW()) AND YEAR(pag.fecha) = YEAR(NOW())
+                     GROUP BY e.idempleado, p.nombre, p.apellido
+                     ORDER BY total DESC"""
+            try:
+                cursor.execute(sql)
+                return cursor.fetchall()
+            except Exception as e:
+                print(f"Error en ranking: {e}")
+                return []
+            finally:
+                cursor.close(); conexion.close()
+        return []
+    
+
+    
     

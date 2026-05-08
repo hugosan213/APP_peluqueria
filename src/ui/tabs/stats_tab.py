@@ -11,10 +11,11 @@ class StatsTab:
         self.setup_ui()
 
     def setup_ui(self):
-        """Define la interfaz de reportes y selector de periodos."""
+        """Interfaz con reportes, selector de periodos y ranking lateral."""
         panel = ctk.CTkFrame(self.master, fg_color="transparent")
         panel.pack(fill="both", expand=True, padx=30, pady=20)
 
+        # --- HEADER ---
         header = ctk.CTkFrame(panel, fg_color="transparent")
         header.pack(fill="x", pady=(0, 20))
 
@@ -27,7 +28,7 @@ class StatsTab:
                                                 width=150, height=32, corner_radius=10,
                                                 fg_color="#F2F0EB", button_color="#D2B48C",
                                                 text_color="#5C4033", dropdown_fg_color="#FFFFFF",
-                                                command=lambda _: self.actualizar_grafico())
+                                                command=lambda _: self.actualizar_todo())
         self.selector_periodo.set("Mensual")
         self.selector_periodo.pack(side="right", padx=(0, 10))
 
@@ -35,16 +36,35 @@ class StatsTab:
                       font=("Inter", 12, "bold"), width=180,
                       command=self.exportar_estadisticas_excel).pack(side="right")
 
+        # --- RESUMEN DE FACTURACIÓN ---
         self.resumen_frame = ctk.CTkFrame(panel, fg_color="#FFFFFF", corner_radius=18, border_width=1, border_color="#E3D6C4")
         self.resumen_frame.pack(fill="x", pady=(0, 20))
 
         self.lbl_resumen = ctk.CTkLabel(self.resumen_frame, text="Cargando datos...", font=("Inter", 12), text_color="#5C4033", anchor="w")
         self.lbl_resumen.pack(fill="x", padx=20, pady=18)
 
-        self.frame_grafico = ctk.CTkFrame(panel, fg_color="#F2F0EB", corner_radius=18, border_width=1, border_color="#E3D6C4")
-        self.frame_grafico.pack(fill="both", expand=True)
+        # --- CONTENEDOR DE GRÁFICO Y RANKING ---
+        self.contenedor_data = ctk.CTkFrame(panel, fg_color="transparent")
+        self.contenedor_data.pack(fill="both", expand=True)
 
+        # Lado Izquierdo: Gráfico de Barras
+        self.frame_grafico = ctk.CTkScrollableFrame(self.contenedor_data, fg_color="#F2F0EB", corner_radius=18, border_width=1, border_color="#E3D6C4")
+        self.frame_grafico.pack(side="left", fill="both", expand=True, padx=(0, 10))
+
+        # Lado Derecho: Ranking de Empleados
+        self.frame_ranking = ctk.CTkFrame(self.contenedor_data, width=300, fg_color="#F2F0EB", corner_radius=18, border_width=1, border_color="#E3D6C4")
+        self.frame_ranking.pack(side="right", fill="y")
+        self.frame_ranking.pack_propagate(False)
+
+        ctk.CTkLabel(self.frame_ranking, text="🏆 TOP PELUQUEROS", font=("Inter", 15, "bold"), text_color="#5C4033").pack(pady=20)
+
+        self.actualizar_todo()
+
+    def actualizar_todo(self):
+        """Actualiza el gráfico y el ranking simultáneamente."""
         self.actualizar_grafico()
+        self.cargar_ranking()
+
 
     def actualizar_grafico(self):
         for widget in self.frame_grafico.winfo_children():
@@ -111,3 +131,21 @@ class StatsTab:
                 messagebox.showinfo("Éxito", f"Reporte profesional generado en:\n{path}")
             except Exception as e:
                 messagebox.showerror("Error", f"No se pudo generar el Excel: {e}")
+
+    def cargar_ranking(self):
+        """Muestra el ranking de ventas por empleado del mes actual."""
+        for widget in self.frame_ranking.winfo_children():
+            if isinstance(widget, ctk.CTkFrame): widget.destroy()
+
+        ranking = self.db.obtener_ranking_empleados()
+        if not ranking:
+            ctk.CTkLabel(self.frame_ranking, text="Sin ventas registradas.", font=("Inter", 12, "italic")).pack(pady=40)
+            return
+
+        for idx, item in enumerate(ranking):
+            fila = ctk.CTkFrame(self.frame_ranking, fg_color="#FFFFFF", corner_radius=12)
+            fila.pack(fill="x", padx=15, pady=6)
+            
+            medalla = "🥇" if idx == 0 else "🥈" if idx == 1 else "🥉" if idx == 2 else "👤"
+            ctk.CTkLabel(fila, text=f"{medalla} {item['empleado']}", font=("Inter", 12, "bold"), anchor="w").pack(side="left", padx=10, pady=12)
+            ctk.CTkLabel(fila, text=f"$ {float(item['total']):,.2f}", font=("Inter", 11, "bold"), text_color="#8B4513").pack(side="right", padx=10)

@@ -102,7 +102,7 @@ class AgendaAdminTab:
             widget.destroy()
         ctk.CTkLabel(self.frame_agenda, text="HISTORIAL DE CORTES FINALIZADOS", font=("Inter", 16, "bold")).pack(pady=10)
         
-        historial = self.db.obtener_historial_cortes()
+        historial = self.db_agenda.obtener_historial_cortes()
         if not historial:
             ctk.CTkLabel(self.frame_agenda, text="No hay cortes finalizados para mostrar.", font=("Inter", 14), text_color="#5C4033").pack(pady=80)
             return

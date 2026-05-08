@@ -153,8 +153,8 @@ class UsuariosDB(BaseDatabase):
         if conexion:
             cursor = conexion.cursor(dictionary=True)
             try:
-                # Usamos la relación directa empleado_idempleado de la tabla usuario
-                sql = """SELECT u.idusuario, u.nombre_usuario, u.rol, u.empleado_idempleado as idempleado,
+                # Agregamos u.password a la lista de campos seleccionados
+                sql = """SELECT u.idusuario, u.nombre_usuario, u.password, u.rol, u.empleado_idempleado as idempleado,
                                  p.nombre, p.apellido, p.dni
                          FROM usuario u
                          LEFT JOIN empleado e ON u.empleado_idempleado = e.idempleado
@@ -226,3 +226,19 @@ class UsuariosDB(BaseDatabase):
             finally:
                 cursor.close(); conexion.close()
         return None
+    
+        # Agregar esto a database/db_usuarios.py
+    def forzar_cambio_password(self, id_empleado, nueva_password):
+        conexion = self.conectar()
+        if not conexion: return False
+        cursor = conexion.cursor()
+        try:
+            sql = "UPDATE usuario SET password = %s WHERE empleado_idempleado = %s"
+            cursor.execute(sql, (nueva_password, id_empleado))
+            conexion.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error: {e}")
+            return False
+        finally:
+            cursor.close(); conexion.close()
