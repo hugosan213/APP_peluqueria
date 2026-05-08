@@ -187,7 +187,7 @@ class AgendaAdminTab:
                     return
 
                 # Procesar datos
-                id_c = self.db.obtener_o_crear_cliente(en.get(), ea.get(), em.get())
+                id_c = self.db_agenda.obtener_o_crear_cliente(en.get(), ea.get(), em.get())
                 empleado_seleccionado = cb_e.get()
                 id_e = next(e['idempleado'] for e in empleados if f"{e['nombre']} {e['apellido']}" == empleado_seleccionado)
                 id_s = next(s['idservicio'] for s in servicios if s['nombre'] == cb_s.get())
@@ -195,7 +195,7 @@ class AgendaAdminTab:
                 fecha_str = f"{ef.get()} {cb_h.get()}:{cb_m.get()}"
                 fecha_sql = datetime.strptime(fecha_str, "%d/%m/%Y %H:%M").strftime("%Y-%m-%d %H:%M:%S")
                 
-                if self.db.registrar_reserva(id_c, id_e, id_s, fecha_sql):
+                if self.db_agenda.registrar_reserva(id_c, id_e, id_s, fecha_sql):
                     v.destroy()
                     self.cargar_datos()
             except Exception as ex:

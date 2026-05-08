@@ -43,9 +43,20 @@ class StockTab:
                                border_width=1, border_color="#E5E1DA", corner_radius=15)
             row.pack(fill="x", pady=8, padx=10)
             
+            # Contenedor de información
             info = ctk.CTkFrame(row, fg_color="transparent")
             info.pack(fill="x", padx=18, pady=14)
+            
+            # Nombre del producto
             ctk.CTkLabel(info, text=p['nombre'].upper(), font=("Inter", 13, "bold"), text_color="#5C4033", anchor="w").pack(side="left")
+            
+            # BOTÓN ELIMINAR (Solo para Admin)
+            if self.parent.usuario_actual['rol'] == 'admin':
+                ctk.CTkButton(info, text="🗑️", width=40, fg_color="#CD5C5C", hover_color="#A52A2A", corner_radius=10,
+                              font=("Inter", 11, "bold"), 
+                              command=lambda i=p['idproducto']: self.borrar_producto(i)).pack(side="right", padx=(10, 0))
+
+            # Stock actual
             ctk.CTkLabel(info, text=f"Stock: {p['stock_actual']} {p['unidad']}", font=("Inter", 12), text_color="#5C4033").pack(side="right")
 
     def abrir_formulario_producto(self):
@@ -70,3 +81,9 @@ class StockTab:
 
         ctk.CTkButton(v, text="Guardar", fg_color="#8B4513", hover_color="#A0522D", corner_radius=10,
                       font=("Inter", 12, "bold"), command=add).pack(pady=30)
+        
+    def borrar_producto(self, id_p):
+        from tkinter import messagebox
+        if messagebox.askyesno("Confirmar", "¿Estás seguro de eliminar este insumo?"):
+            if self.db.eliminar_producto_stock(id_p):
+                self.cargar_lista_stock()
