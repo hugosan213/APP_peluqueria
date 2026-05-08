@@ -1,12 +1,12 @@
 import customtkinter as ctk
-from database.connection import Database
+from database.db_finanzas import FinanzasDB
 from tkinter import messagebox
 
 class CajaTab:
     def __init__(self, master, parent):
         self.master = master  # El tab físico (ctk.CTkFrame)[cite: 19]
         self.parent = parent  # Instancia de MainWindow[cite: 19]
-        self.db = Database()
+        self.db = FinanzasDB()
         self.setup_ui()
 
     def setup_ui(self):
@@ -58,13 +58,17 @@ class CajaTab:
         ctk.CTkLabel(totales_card, text=f"SALDO EN CAJA: $ {saldo_neto:,.2f}", font=("Inter", 24, "bold"), text_color="#2D2424").pack(anchor="w", padx=20, pady=(0, 18))
 
     def abrir_formulario_egreso(self):
-        """Seguridad y formulario de retiro[cite: 7, 8]"""
+        """Seguridad y formulario de retiro con validación de cancelación."""
         dialogo = ctk.CTkInputDialog(text="Ingrese su contraseña para autorizar el retiro:", title="Seguridad de Caja")
         password_ingresada = dialogo.get_input()
 
-        # CORRECCIÓN: Accedemos al password a través de self.parent
+        # 1. Verificamos si el usuario apretó 'Cancelar' o cerró la ventana (devuelve None)
+        # 2. Verificamos que no haya enviado el campo vacío
+        if password_ingresada is None or password_ingresada.strip() == "":
+            return # Salimos de la función silenciosamente
+
+        # 3. Solo si hay texto, comparamos con la contraseña del usuario actual
         if password_ingresada == self.parent.usuario_actual.get('password'):
-            # CORRECCIÓN: Usamos self.master como contenedor de la ventana
             v = ctk.CTkToplevel(self.master)
             v.geometry("350x400")
             v.attributes("-topmost", True)
@@ -79,17 +83,33 @@ class CajaTab:
             ed.pack(pady=10)
             
             def guardar():
-                monto = em.get()
+                monto_texto = em.get()
                 desc = ed.get()
-                if not monto or not desc:
+                
+                if not monto_texto or not desc:
                     messagebox.showwarning("Atención", "Complete todos los campos.")
                     return
                 
-                if self.db.registrar_egreso(monto, desc):
-                    v.destroy()
-                    self.cargar_caja_diaria()
+                try:
+                    monto_a_retirar = float(monto_texto)
+                    # Obtenemos el saldo actual antes de permitir el retiro
+                    ingresos = self.db.obtener_caja_diaria()
+                    total_ingresos = sum(float(r['total']) for r in ingresos)
+                    egresos_ya_realizados = float(self.db.obtener_total_egresos_hoy())
+                    saldo_disponible = total_ingresos - egresos_ya_realizados
+
+                    # VALIDACIÓN CRÍTICA:
+                    if monto_a_retirar > saldo_disponible:
+                        messagebox.showerror("Error de Caja", 
+                            f"No hay dinero suficiente.\nSaldo disponible: $ {saldo_disponible:,.2f}")
+                        return
+
+                    if self.db.registrar_egreso(monto_a_retirar, desc):
+                        v.destroy()
+                        self.cargar_caja_diaria()
+                except ValueError:
+                    messagebox.showerror("Error", "Ingrese un monto numérico válido.")
             
-            ctk.CTkButton(v, text="Confirmar Gasto", fg_color="#CD5C5C", hover_color="#A52A2A", corner_radius=8, command=guardar).pack(pady=30)
-            
-        elif password_ingresada is not None:
+        else:
+            # Si ingresó algo pero no coincide
             messagebox.showerror("Error", "Contraseña incorrecta. Operación cancelada.")

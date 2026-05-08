@@ -1,11 +1,11 @@
 import customtkinter as ctk
-from database.connection import Database
+from database.db_agenda import AgendaDB
 
 class ServiciosTab:
     def __init__(self, master, parent):
         self.master = master
         self.parent = parent
-        self.db = Database()
+        self.db = AgendaDB()
         self.setup_ui()
 
     def setup_ui(self):

@@ -1,14 +1,13 @@
 import customtkinter as ctk
-from database.connection import Database
+from database.db_finanzas import FinanzasDB
 from datetime import datetime
 from tkinter import filedialog, messagebox
-import pandas as pd
 
 class StatsTab:
     def __init__(self, master, parent):
         self.master = master  # El tab físico
         self.parent = parent  # MainWindow
-        self.db = Database()
+        self.db = FinanzasDB()
         self.setup_ui()
 
     def setup_ui(self):

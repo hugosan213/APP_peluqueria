@@ -1,11 +1,11 @@
 import customtkinter as ctk
-from database.connection import Database
+from database.db_usuarios import UsuariosDB
 
 class ConfigTab:
     def __init__(self, master, main_window):
         self.master = master
         self.main_window = main_window
-        self.db = Database()
+        self.db = UsuariosDB()
         self.setup_tab_gestion()
 
     def setup_tab_gestion(self):

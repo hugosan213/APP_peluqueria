@@ -1,13 +1,17 @@
 import customtkinter as ctk
-from database.connection import Database
+from database.db_agenda import AgendaDB
+from database.db_usuarios import UsuariosDB
+from database.db_finanzas import FinanzasDB
 from datetime import datetime
 
 class AgendaAdminTab:
     def __init__(self, master, parent):
         self.master = master
         self.parent = parent
-        self.db = Database()
-        self.filtro_actual = "Todos" # Estado inicial del filtro
+        # Asignamos nombres diferentes para no sobrescribirlos
+        self.db_usuarios = UsuariosDB() 
+        self.db_agenda = AgendaDB()
+        self.filtro_actual = "Todos"
         self.setup_ui()
         self.cargar_datos()
 
@@ -24,7 +28,7 @@ class AgendaAdminTab:
         ctk.CTkLabel(filtro_frame, text="Filtrar por:", font=("Inter", 12)).pack(side="left", padx=5)
         
         # Obtenemos empleados para el filtro
-        empleados = self.db.obtener_empleados()
+        empleados = self.db_usuarios.obtener_empleados()
         opciones_filtro = ["Todos"] + [f"{e['nombre']} {e['apellido']}" for e in empleados]
         
         self.cb_filtro = ctk.CTkComboBox(filtro_frame, values=opciones_filtro, command=self.aplicar_filtro, width=200)
@@ -54,7 +58,7 @@ class AgendaAdminTab:
         for widget in self.frame_agenda.winfo_children():
             widget.destroy()
         
-        agenda = self.db.obtener_agenda()
+        agenda = self.db_agenda.obtener_agenda()
         
         # --- FILTRADO LÓGICO ---
         if self.filtro_actual != "Todos":
@@ -117,8 +121,8 @@ class AgendaAdminTab:
         v.configure(fg_color="#FAF9F6")
 
         # Recuperar datos de la base de datos
-        empleados = self.db.obtener_empleados()
-        servicios = self.db.obtener_servicios()
+        empleados = empleados = self.db_usuarios.obtener_empleados()
+        servicios = self.db_agenda.obtener_servicios()
 
         ctk.CTkLabel(v, text="DATOS DEL CLIENTE", font=("Inter", 16, "bold"), text_color="#5C4033").pack(pady=(20, 10))
         en = ctk.CTkEntry(v, placeholder_text="Nombre", width=380); en.pack(pady=5)
@@ -216,7 +220,7 @@ class AgendaAdminTab:
         v.attributes("-topmost", True)
         v.title("Procesar Pago")
         
-        db = Database()
+        db = FinanzasDB()
         metodos = db.obtener_metodos_pago()
         
         id_reserva = t.get('idreserva')

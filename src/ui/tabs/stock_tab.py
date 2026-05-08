@@ -1,11 +1,11 @@
 import customtkinter as ctk
-from database.connection import Database
+from database.db_stock import StockDB
 
 class StockTab:
     def __init__(self, master, parent):
         self.master = master  # El tab físico
         self.parent = parent  # MainWindow
-        self.db = Database()
+        self.db = StockDB()
         self.setup_ui()
 
     def setup_ui(self):

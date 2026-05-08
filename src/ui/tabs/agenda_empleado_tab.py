@@ -1,12 +1,12 @@
 import customtkinter as ctk
-from database.connection import Database
+from database.db_agenda import AgendaDB
 from datetime import datetime
 
 class AgendaEmpleadoTab:
     def __init__(self, master, parent):
         self.master = master
         self.parent = parent
-        self.db = Database()
+        self.db = AgendaDB()
         self.id_empleado = self.parent.usuario_actual.get('idempleado')
         if not self.id_empleado and self.parent.usuario_actual.get('rol') == 'empleado':
             posible_dni = self.parent.usuario_actual.get('dni') or self.parent.usuario_actual.get('nombre_usuario')

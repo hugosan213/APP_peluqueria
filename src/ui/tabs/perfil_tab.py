@@ -1,11 +1,11 @@
 import customtkinter as ctk
-from database.connection import Database
+from database.db_usuarios import UsuariosDB
 
 class PerfilTab:
     def __init__(self, master, parent):
         self.master = master
         self.parent = parent
-        self.db = Database()
+        self.db = UsuariosDB()
         self.setup_ui()
 
     def setup_ui(self):

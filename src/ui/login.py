@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from database.connection import Database
+from database.db_usuarios import UsuariosDB
 from tkinter import messagebox
 
 class LoginWindow(ctk.CTk):
@@ -48,7 +48,7 @@ class LoginWindow(ctk.CTk):
         usuario = self.user_entry.get()
         password = self.pass_entry.get()
 
-        db = Database()
+        db = UsuariosDB()
         datos_usuario = db.validar_usuario(usuario, password)
 
         if datos_usuario:

@@ -1,11 +1,11 @@
 import customtkinter as ctk
-from database.connection import Database
+from database.db_agenda import AgendaDB
 
 class ClientesTab:
     def __init__(self, master, parent):
         self.master = master  # El tab físico (este es el que hay que usar para Toplevel)
         self.parent = parent  # La MainWindow
-        self.db = Database()
+        self.db = AgendaDB()
         self.setup_ui()
 
     def setup_ui(self):
